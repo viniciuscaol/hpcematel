@@ -1,0 +1,14 @@
+<div id="anexos-area">
+  {% if chamado.anexos %}
+  <ul class="anexos-lista">
+    {% for anexo in chamado.anexos %}
+    <li>
+      <a href="/chamados/{{ chamado.id }}/anexos/{{ anexo.id }}">{{ anexo.nome_original }}</a>
+      <span class="anexo-meta">{{ (anexo.tamanho_bytes / 1024) | round(1) }} KB · {{ anexo.enviado_por_nome_snapshot }} · {{ anexo.criado_em | data_br }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="sem-resultado">Nenhum anexo ainda.</p>
+  {% endif %}
+</div>

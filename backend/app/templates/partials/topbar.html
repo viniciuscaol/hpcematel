@@ -1,0 +1,18 @@
+<header class="topbar">
+  <span class="brand">
+    <svg class="ecg-icon" width="22" height="16" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <polyline points="0,12 16,12 20,4 26,20 32,12 60,12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    {{ app_name }}
+  </span>
+  <nav class="main-nav">
+    <a href="/dashboard">Dashboard</a>
+    <a href="/chamados">Chamados</a>
+    <a href="/chamados/novo">Novo Chamado</a>
+    <a href="/admin">Administração</a>
+  </nav>
+  <div class="user-menu">
+    <span>{{ usuario.nome }}</span>
+    <form hx-post="/logout"><button type="submit" class="link-button">Sair</button></form>
+  </div>
+</header>

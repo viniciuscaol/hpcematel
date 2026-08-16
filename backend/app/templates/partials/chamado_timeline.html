@@ -1,0 +1,35 @@
+{% set eventos = [] %}
+{% for h in chamado.historico %}
+  {% set _ = eventos.append({"tipo": "historico", "data": h.criado_em, "usuario": h.usuario_nome_snapshot, "campo": h.campo_alterado, "de": h.valor_anterior, "para": h.valor_novo}) %}
+{% endfor %}
+{% for i in chamado.interacoes %}
+  {% set _ = eventos.append({"tipo": "interacao", "data": i.criado_em, "usuario": i.usuario_nome_snapshot, "texto": i.texto}) %}
+{% endfor %}
+{% for a in chamado.anexos %}
+  {% set _ = eventos.append({"tipo": "anexo", "data": a.criado_em, "usuario": a.enviado_por_nome_snapshot, "nome_arquivo": a.nome_original}) %}
+{% endfor %}
+{% set eventos_ordenados = eventos | sort(attribute="data") %}
+
+<ul class="timeline">
+  {% for evento in eventos_ordenados %}
+  <li class="timeline-item timeline-{{ evento.tipo }}">
+    <div class="timeline-meta">
+      <strong>{{ evento.usuario }}</strong>
+      <span>{{ evento.data | data_br }}</span>
+    </div>
+    {% if evento.tipo == "historico" %}
+      {% if evento.campo == "criacao" %}
+        <p>Criou o chamado.</p>
+      {% elif evento.campo == "anexo_excluido" %}
+        <p>Removeu o anexo: {{ evento.de }}</p>
+      {% else %}
+        <p>Alterou <strong>{{ evento.campo }}</strong>: {{ evento.de or "-" }} &rarr; {{ evento.para }}</p>
+      {% endif %}
+    {% elif evento.tipo == "anexo" %}
+      <p>Anexou o arquivo <strong>{{ evento.nome_arquivo }}</strong></p>
+    {% else %}
+      <p>{{ evento.texto }}</p>
+    {% endif %}
+  </li>
+  {% endfor %}
+</ul>

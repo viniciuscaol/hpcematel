@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Novo Chamado - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+
+  <main class="content">
+    <h1>Novo Chamado</h1>
+
+    <form hx-post="/chamados/novo" hx-target="#form-erro" hx-swap="innerHTML" class="chamado-form">
+
+      <label for="cliente_busca">Cliente</label>
+      <div class="cliente-busca-wrapper">
+        <input
+          type="text" id="cliente_busca" name="termo" placeholder="Digite o nome do cliente..."
+          hx-get="/clientes/buscar" hx-trigger="keyup changed delay:400ms"
+          hx-target="#clientes-resultado" hx-swap="innerHTML" autocomplete="off"
+        >
+        <div id="clientes-resultado"></div>
+      </div>
+      <div id="cliente-selecionado"></div>
+
+      <label for="titulo">Título</label>
+      <input type="text" id="titulo" name="titulo" required maxlength="255">
+
+      <label for="descricao">Descrição</label>
+      <textarea id="descricao" name="descricao" rows="5" required></textarea>
+
+      <label for="categoria_id">Categoria</label>
+      <select id="categoria_id" name="categoria_id" required>
+        {% for categoria in categorias %}
+        <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="prioridade_id">Prioridade</label>
+      <select id="prioridade_id" name="prioridade_id" required>
+        {% for prioridade in prioridades %}
+        <option value="{{ prioridade.id }}">{{ prioridade.nome }}</option>
+        {% endfor %}
+      </select>
+
+      <label for="responsavel_codigo">Responsável</label>
+      <select id="responsavel_codigo" name="responsavel_codigo" required>
+        {% for resp in responsaveis %}
+        <option value="{{ resp.codigo }}" {% if resp.codigo == usuario.codigo %}selected{% endif %}>{{ resp.nome }}</option>
+        {% endfor %}
+      </select>
+
+      <div id="form-erro"></div>
+
+      <button type="submit" hx-disabled-elt="this">Criar chamado</button>
+    </form>
+  </main>
+</div>
+{% endblock %}

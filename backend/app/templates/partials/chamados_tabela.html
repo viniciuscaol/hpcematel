@@ -1,0 +1,68 @@
+<div class="faixa-contexto">
+  <span>
+    {% if cliente_nome %}
+      Histórico de <strong>{{ cliente_nome }}</strong>
+    {% elif filtro == "abertos" %}
+      Mostrando <strong>chamados em aberto</strong>
+    {% else %}
+      Mostrando <strong>todos os status</strong>
+    {% endif %}
+    {% if data_filtro %} · {{ data_filtro.split("-")[2] }}/{{ data_filtro.split("-")[1] }}/{{ data_filtro.split("-")[0] }}
+    {% else %} · todas as datas{% endif %}
+    {% if busca %} · busca: "{{ busca }}"{% endif %}
+  </span>
+  <span class="faixa-total">{{ total_registros }} chamado{{ "s" if total_registros != 1 else "" }}</span>
+</div>
+
+{% if chamados %}
+<table class="chamados-tabela">
+  <thead>
+    <tr>
+      <th>Nº Chamado</th>
+      <th>Título</th>
+      <th>Cliente</th>
+      <th>Categoria</th>
+      <th>Prioridade</th>
+      <th>Responsável</th>
+      <th>Status</th>
+      <th>SLA</th>
+      <th>Criado em</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for chamado in chamados %}
+    <tr onclick="window.location='/chamados/{{ chamado.id }}'">
+      <td class="numero-chamado">{{ chamado.numero_chamado }}</td>
+      <td>{{ chamado.titulo }}</td>
+      <td>{{ chamado.cliente_nome_snapshot }}</td>
+      <td>{{ chamado.categoria.nome }}</td>
+      <td><span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span></td>
+      <td>{{ chamado.responsavel_nome_snapshot or "Não atribuído" }}</td>
+      <td><span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span></td>
+      <td>
+        {% if chamado.sla_status == "estourado" %}<span class="badge-sla badge-sla-estourado">Estourado</span>
+        {% elif chamado.sla_status == "proximo" %}<span class="badge-sla badge-sla-proximo">Atenção</span>
+        {% elif chamado.sla_status == "ok" %}<span class="badge-sla badge-sla-ok">No prazo</span>
+        {% else %}<span class="badge-sla badge-sla-neutro">-</span>{% endif %}
+      </td>
+      <td>{{ chamado.criado_em | data_br }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if total_paginas > 1 %}
+<div class="paginacao">
+  {% if pagina > 1 %}
+  <button hx-get="/chamados/tabela?{{ query_string }}&pagina={{ pagina - 1 }}" hx-target="#chamados-tabela-area" hx-swap="innerHTML">&larr; Anterior</button>
+  {% endif %}
+  <span>Página {{ pagina }} de {{ total_paginas }}</span>
+  {% if pagina < total_paginas %}
+  <button hx-get="/chamados/tabela?{{ query_string }}&pagina={{ pagina + 1 }}" hx-target="#chamados-tabela-area" hx-swap="innerHTML">Próxima &rarr;</button>
+  {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="sem-resultado">Nenhum chamado encontrado com esse filtro.</p>
+{% endif %}

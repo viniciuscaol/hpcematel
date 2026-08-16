@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Chamado #{{ chamado.numero_chamado }} - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content chamado-detalhe">
+    <a href="/chamados" class="voltar-link">&larr; Voltar para Chamados</a>
+
+    {% if chamado.excluido %}
+    <div class="aviso-excluido">
+      Este chamado foi excluído em {{ chamado.excluido_em | data_br }} por {{ chamado.excluido_por_nome_snapshot }}.
+      O registro é mantido apenas para histórico.
+    </div>
+    {% endif %}
+
+    <div class="chamado-header">
+      <h1>{{ chamado.numero_chamado }} - {{ chamado.titulo }}</h1>
+      <form hx-post="/chamados/{{ chamado.id }}/status" class="status-form">
+        <select name="status_id" onchange="this.form.requestSubmit()">
+          {% for status in status_list %}
+          <option value="{{ status.id }}" {% if status.id == chamado.status_id %}selected{% endif %}>{{ status.nome }}</option>
+          {% endfor %}
+        </select>
+        <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
+      </form>
+    </div>
+
+    <div class="chamado-grid">
+      <div class="chamado-info">
+        <h2>Detalhes</h2>
+        <p>
+          <strong>Cliente:</strong> {{ chamado.cliente_nome_snapshot }}
+          <a href="/chamados?cliente_codigo={{ chamado.cliente_codigo }}&filtro=todos&data=" class="historico-cliente-link">Ver histórico</a>
+        </p>
+        {% if chamado.cliente_contato_snapshot %}<p><strong>Contato:</strong> {{ chamado.cliente_contato_snapshot }}</p>{% endif %}
+        {% if chamado.cliente_telefone_snapshot %}<p><strong>Telefone:</strong> {{ chamado.cliente_telefone_snapshot }}</p>{% endif %}
+
+        <div class="campo-linha">
+          <strong>Categoria:</strong>
+          <form hx-post="/chamados/{{ chamado.id }}/categoria" class="campo-editavel">
+            <select name="categoria_id" onchange="this.form.requestSubmit()">
+              {% for categoria in categorias %}
+              <option value="{{ categoria.id }}" {% if categoria.id == chamado.categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+
+        <div class="campo-linha">
+          <strong>Prioridade:</strong>
+          <form hx-post="/chamados/{{ chamado.id }}/prioridade" class="campo-editavel">
+            <select name="prioridade_id" onchange="this.form.requestSubmit()">
+              {% for prioridade in prioridades %}
+              <option value="{{ prioridade.id }}" {% if prioridade.id == chamado.prioridade_id %}selected{% endif %}>{{ prioridade.nome }}</option>
+              {% endfor %}
+            </select>
+            <span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span>
+          </form>
+        </div>
+
+        <div class="campo-linha">
+          <strong>Responsável:</strong>
+          <form hx-post="/chamados/{{ chamado.id }}/responsavel" class="campo-editavel">
+            <select name="responsavel_codigo" onchange="this.form.requestSubmit()">
+              <option value="">Não atribuído</option>
+              {% for resp in responsaveis %}
+              <option value="{{ resp.codigo }}" {% if resp.codigo == chamado.responsavel_codigo %}selected{% endif %}>{{ resp.nome }}</option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+
+        <p><strong>Aberto por:</strong> {{ chamado.criado_por_nome_snapshot }}</p>
+        <p><strong>Criado em:</strong> {{ chamado.criado_em | data_br }}</p>
+        <p>
+          <strong>Prazo SLA:</strong> {{ chamado.prazo_sla | data_br }}
+          {% if chamado.sla_status == "estourado" %}<span class="badge-sla badge-sla-estourado">Estourado</span>
+          {% elif chamado.sla_status == "proximo" %}<span class="badge-sla badge-sla-proximo">Atenção</span>
+          {% elif chamado.sla_status == "ok" %}<span class="badge-sla badge-sla-ok">No prazo</span>{% endif %}
+        </p>
+
+        <h2>Descrição</h2>
+        <p class="chamado-descricao">{{ chamado.descricao }}</p>
+
+        <h2>Anexos</h2>
+        {% if erro_anexo %}<p class="error-message">{{ erro_anexo }}</p>{% endif %}
+        {% if chamado.anexos %}
+        <ul class="anexos-lista">
+          {% for anexo in chamado.anexos %}
+          <li>
+            <div>
+              <a href="/chamados/{{ chamado.id }}/anexos/{{ anexo.id }}">{{ anexo.nome_original }}</a>
+              <span class="anexo-meta">{{ (anexo.tamanho_bytes / 1024) | round(1) }} KB · {{ anexo.enviado_por_nome_snapshot }} · {{ anexo.criado_em | data_br }}</span>
+            </div>
+            {% if not chamado.excluido %}
+            <form hx-post="/chamados/{{ chamado.id }}/anexos/{{ anexo.id }}/excluir" hx-confirm="Excluir o anexo '{{ anexo.nome_original }}'?">
+              <button type="submit" class="anexo-excluir">Excluir</button>
+            </form>
+            {% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="sem-resultado">Nenhum anexo ainda.</p>
+        {% endif %}
+
+        {% if not chamado.excluido %}
+        <form hx-post="/chamados/{{ chamado.id }}/anexos" hx-encoding="multipart/form-data" class="anexo-form">
+          <input type="file" name="arquivo" required>
+          <button type="submit" hx-disabled-elt="this">Enviar anexo</button>
+        </form>
+        {% endif %}
+
+        {% if not chamado.excluido %}
+        <form hx-post="/chamados/{{ chamado.id }}/excluir" hx-confirm="Tem certeza que deseja excluir este chamado? O registro será mantido para histórico, mas ele deixará de aparecer nas listagens.">
+          <button type="submit" class="button-danger">Excluir chamado</button>
+        </form>
+        {% endif %}
+      </div>
+
+      <div class="chamado-timeline-wrapper">
+        <h2>Histórico e Interações</h2>
+        <div id="timeline">
+          {% include "partials/chamado_timeline.html" %}
+        </div>
+
+        {% if not chamado.excluido %}
+        <form hx-post="/chamados/{{ chamado.id }}/interacao" class="interacao-form">
+          <textarea name="texto" rows="3" placeholder="Adicionar comentário ou andamento..." required></textarea>
+          <button type="submit" hx-disabled-elt="this">Registrar</button>
+        </form>
+        {% endif %}
+      </div>
+    </div>
+  </main>
+</div>
+{% endblock %}

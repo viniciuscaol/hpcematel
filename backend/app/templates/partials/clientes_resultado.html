@@ -1,0 +1,20 @@
+{% if clientes %}
+<ul class="cliente-resultado">
+  {% for cliente in clientes %}
+  <li>
+    <button
+      type="button"
+      class="cliente-item"
+      hx-get="/clientes/selecionar/{{ cliente.codigo }}"
+      hx-target="#cliente-selecionado"
+      hx-swap="innerHTML"
+    >
+      <strong>{{ cliente.nome }}</strong>
+      {% if cliente.nome_contato %}<span>{{ cliente.nome_contato }}</span>{% endif %}
+    </button>
+  </li>
+  {% endfor %}
+</ul>
+{% elif termo|length >= 2 %}
+<p class="sem-resultado">Nenhum cliente encontrado.</p>
+{% endif %}

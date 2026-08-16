@@ -1,0 +1,8 @@
+<form hx-post="/chamados/{{ chamado.id }}/responsavel" hx-target="#responsavel-area" hx-swap="innerHTML" class="campo-editavel">
+  <select name="responsavel_codigo" onchange="this.form.requestSubmit()">
+    <option value="">Não atribuído</option>
+    {% for resp in responsaveis %}
+    <option value="{{ resp.codigo }}" {% if resp.codigo == chamado.responsavel_codigo %}selected{% endif %}>{{ resp.nome }}</option>
+    {% endfor %}
+  </select>
+</form>

@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Status - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <a href="/admin" class="voltar-link">&larr; Administração</a>
+    <h1>Status</h1>
+    <p class="sem-resultado">A cor de cada status pode ser ajustada aqui. Criar um status novo ainda exige uma alteração técnica, já que o sistema precisa saber se ele conta como "aberto" ou "fechado".</p>
+
+    <table class="chamados-tabela">
+      <thead><tr><th>Nome</th><th>Cor</th><th>Finalizador</th></tr></thead>
+      <tbody>
+        {% for s in status_list %}
+        <tr>
+          <td>{{ s.nome }}</td>
+          <td>
+            <form hx-post="/admin/status/{{ s.id }}/editar" style="display:flex; gap:6px; align-items:center;">
+              <input type="color" name="cor" value="{{ s.cor }}">
+              <button type="submit" class="link-button">Salvar</button>
+            </form>
+          </td>
+          <td>{{ "Sim" if s.finalizador else "Não" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</div>
+{% endblock %}

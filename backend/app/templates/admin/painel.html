@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Administração - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <h1>Administração</h1>
+    <div class="cards-grid">
+      <a href="/admin/categorias" class="card-indicador card-clicavel"><span class="card-label">Categorias</span></a>
+      <a href="/admin/prioridades" class="card-indicador card-clicavel"><span class="card-label">Prioridades / SLA</span></a>
+      <a href="/admin/status" class="card-indicador card-clicavel"><span class="card-label">Status</span></a>
+      <a href="/admin/contatos" class="card-indicador card-clicavel"><span class="card-label">Contatos WhatsApp</span></a>
+    </div>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Categorias - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <a href="/admin" class="voltar-link">&larr; Administração</a>
+    <h1>Categorias</h1>
+
+    <table class="chamados-tabela">
+      <thead><tr><th>Nome</th><th>Ativo</th><th></th></tr></thead>
+      <tbody>
+        {% for c in categorias %}
+        <tr>
+          <td>{{ c.nome }}</td>
+          <td>{{ "Sim" if c.ativo else "Não" }}</td>
+          <td>
+            <form hx-post="/admin/categorias/{{ c.id }}/toggle">
+              <button type="submit" class="link-button">{{ "Desativar" if c.ativo else "Ativar" }}</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Nova categoria</h2>
+    <form hx-post="/admin/categorias" class="chamado-form" style="max-width: 300px;">
+      <label for="nome">Nome</label>
+      <input type="text" id="nome" name="nome" required>
+      <button type="submit">Criar</button>
+    </form>
+  </main>
+</div>
+{% endblock %}

@@ -1,0 +1,8 @@
+<form hx-post="/chamados/{{ chamado.id }}/prioridade" hx-target="#prioridade-area" hx-swap="innerHTML" class="campo-editavel">
+  <select name="prioridade_id" onchange="this.form.requestSubmit()">
+    {% for prioridade in prioridades %}
+    <option value="{{ prioridade.id }}" {% if prioridade.id == chamado.prioridade_id %}selected{% endif %}>{{ prioridade.nome }}</option>
+    {% endfor %}
+  </select>
+  <span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span>
+</form>

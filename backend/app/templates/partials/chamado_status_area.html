@@ -1,0 +1,8 @@
+<form hx-post="/chamados/{{ chamado.id }}/status" hx-target="#status-area" hx-swap="innerHTML" class="status-form">
+  <select name="status_id" onchange="this.form.requestSubmit()">
+    {% for status in status_list %}
+    <option value="{{ status.id }}" {% if status.id == chamado.status_id %}selected{% endif %}>{{ status.nome }}</option>
+    {% endfor %}
+  </select>
+  <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
+</form>

@@ -1,0 +1,7 @@
+<form hx-post="/chamados/{{ chamado.id }}/categoria" hx-target="#categoria-area" hx-swap="innerHTML" class="campo-editavel">
+  <select name="categoria_id" onchange="this.form.requestSubmit()">
+    {% for categoria in categorias %}
+    <option value="{{ categoria.id }}" {% if categoria.id == chamado.categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
+    {% endfor %}
+  </select>
+</form>

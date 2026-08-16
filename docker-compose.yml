@@ -1,0 +1,84 @@
+version: "3.9"
+
+services:
+  helpdesk_db:
+    image: postgres:16-alpine
+    container_name: helpdesk_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${HELPDESK_DB_USER}
+      POSTGRES_PASSWORD: ${HELPDESK_DB_PASSWORD}
+      POSTGRES_DB: ${HELPDESK_DB_NAME}
+    volumes:
+      - helpdesk_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${HELPDESK_DB_USER} -d ${HELPDESK_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - helpdesk_net
+    # Não expor porta pro host em produção; deixamos comentado por padrão.
+    # Descomente apenas se precisar acessar o banco de fora do container durante o desenvolvimento.
+    # ports:
+    #   - "5433:5432"
+
+  helpdesk_backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: helpdesk_backend
+    restart: unless-stopped
+    depends_on:
+      helpdesk_db:
+        condition: service_healthy
+    environment:
+      APP_NAME: ${APP_NAME}
+      APP_BASE_URL: ${APP_BASE_URL}
+      DATABASE_URL: postgresql+asyncpg://${HELPDESK_DB_USER}:${HELPDESK_DB_PASSWORD}@helpdesk_db:5432/${HELPDESK_DB_NAME}
+      LEGACY_DATABASE_URL: postgresql://${LEGACY_DB_USER}:${LEGACY_DB_PASSWORD}@${LEGACY_DB_HOST}:${LEGACY_DB_PORT}/${LEGACY_DB_NAME}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_ALGORITHM: HS256
+      JWT_EXPIRE_MINUTES: 30
+      ENVIRONMENT: ${ENVIRONMENT}
+      ANEXOS_DIR: /app/anexos
+      WAHA_API_URL: http://waha:3000
+      WAHA_API_KEY: ${WAHA_API_KEY}
+      WAHA_SESSAO: default
+      WAHA_GRUPO_ID: ${WAHA_GRUPO_ID}
+    volumes:
+      - ./backend/migrations:/app/migrations
+      - ./data/anexos:/app/anexos
+    networks:
+      - helpdesk_net
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  waha:
+    image: devlikeapro/waha:latest
+    container_name: waha
+    restart: unless-stopped
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      WAHA_API_KEY: ${WAHA_API_KEY}
+    ports:
+      - "3000:3000"
+    volumes:
+      - waha_sessions:/app/.sessions
+    networks:
+      - helpdesk_net
+
+volumes:
+  helpdesk_db_data:
+    driver: local
+  waha_sessions:
+    driver: local
+
+networks:
+  helpdesk_net:
+    driver: bridge

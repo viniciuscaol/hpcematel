@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Contatos WhatsApp - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <a href="/admin" class="voltar-link">&larr; Administração</a>
+    <h1>Contatos WhatsApp</h1>
+    <p class="sem-resultado">Cadastre o número de WhatsApp de cada pessoa para receber notificação individual quando for atribuída a um chamado. Formato: DDI + DDD + número, sem espaços (ex: 5573999999999).</p>
+
+    <table class="chamados-tabela">
+      <thead><tr><th>Usuário</th><th>Número WhatsApp</th><th></th></tr></thead>
+      <tbody>
+        {% for linha in linhas %}
+        <tr>
+          <td>{{ linha.nome }}</td>
+          <td colspan="2">
+            <form hx-post="/admin/contatos/{{ linha.codigo }}" style="display:flex; gap:6px;">
+              <input type="hidden" name="nome" value="{{ linha.nome }}">
+              <input type="text" name="whatsapp_numero" value="{{ linha.numero }}" placeholder="5573999999999">
+              <button type="submit" class="link-button">Salvar</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</div>
+{% endblock %}

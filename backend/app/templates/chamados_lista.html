@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Chamados - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <div class="page-header">
+      <h1>Chamados</h1>
+      <a href="/chamados/novo" class="button-link">+ Novo Chamado</a>
+    </div>
+
+    <form class="filtro-area" hx-get="/chamados/tabela" hx-target="#chamados-tabela-area" hx-trigger="change, input delay:400ms" hx-swap="innerHTML">
+      <input type="text" id="busca" name="busca" placeholder="Buscar por título, cliente, responsável ou nº..." value="{{ busca }}" style="min-width: 260px;">
+
+      <label for="filtro">Mostrar:</label>
+      <select id="filtro" name="filtro">
+        <option value="abertos" {% if filtro == "abertos" %}selected{% endif %}>Em aberto (padrão)</option>
+        <option value="todos" {% if filtro == "todos" %}selected{% endif %}>Todos os status</option>
+      </select>
+
+      <label for="data">Data:</label>
+      <input type="date" id="data" name="data" value="{{ data_filtro }}">
+
+      <button
+        type="button"
+        class="link-button"
+        onclick="document.getElementById('data').value=''; this.closest('form').dispatchEvent(new Event('change', {bubbles:true}));"
+      >Ver todas as datas</button>
+
+      {% if cliente_codigo %}
+      <input type="hidden" name="cliente_codigo" value="{{ cliente_codigo }}">
+      {% endif %}
+    </form>
+
+    <div id="chamados-tabela-area">
+      {% include "partials/chamados_tabela.html" %}
+    </div>
+  </main>
+</div>
+{% endblock %}

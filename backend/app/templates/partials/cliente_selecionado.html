@@ -1,0 +1,21 @@
+{% if cliente %}
+<input type="hidden" name="cliente_codigo" value="{{ cliente.codigo }}">
+<div class="cliente-card">
+  <div>
+    <strong>{{ cliente.nome }}</strong>
+    {% if cliente.nome_contato %}<p>Contato: {{ cliente.nome_contato }}</p>{% endif %}
+    {% if cliente.telefone_contato %}<p>Telefone: {{ cliente.telefone_contato }}</p>{% endif %}
+  </div>
+  <button
+    type="button"
+    class="link-button"
+    onclick="document.getElementById('cliente-selecionado').innerHTML=''; document.getElementById('cliente_busca').value=''; document.getElementById('cliente_busca').focus();"
+  >Trocar</button>
+</div>
+<script>
+  document.getElementById('cliente_busca').value = {{ cliente.nome|tojson }};
+  document.getElementById('clientes-resultado').innerHTML = '';
+</script>
+{% else %}
+<p class="error-message">Cliente não encontrado.</p>
+{% endif %}
