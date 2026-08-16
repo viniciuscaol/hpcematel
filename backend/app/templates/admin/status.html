@@ -15,7 +15,7 @@
         <tr>
           <td>{{ s.nome }}</td>
           <td>
-            <form hx-post="/admin/status/{{ s.id }}/editar" style="display:flex; gap:6px; align-items:center;">
+            <form method="post" action="/admin/status/{{ s.id }}/editar" style="display:flex; gap:6px; align-items:center;">
               <input type="color" name="cor" value="{{ s.cor }}">
               <button type="submit" class="link-button">Salvar</button>
             </form>

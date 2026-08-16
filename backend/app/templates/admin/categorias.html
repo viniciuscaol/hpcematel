@@ -15,7 +15,7 @@
           <td>{{ c.nome }}</td>
           <td>{{ "Sim" if c.ativo else "Não" }}</td>
           <td>
-            <form hx-post="/admin/categorias/{{ c.id }}/toggle">
+            <form method="post" action="/admin/categorias/{{ c.id }}/toggle">
               <button type="submit" class="link-button">{{ "Desativar" if c.ativo else "Ativar" }}</button>
             </form>
           </td>
@@ -25,7 +25,7 @@
     </table>
 
     <h2>Nova categoria</h2>
-    <form hx-post="/admin/categorias" class="chamado-form" style="max-width: 300px;">
+    <form method="post" action="/admin/categorias" class="chamado-form" style="max-width: 300px;">
       <label for="nome">Nome</label>
       <input type="text" id="nome" name="nome" required>
       <button type="submit">Criar</button>

@@ -15,7 +15,7 @@
         <tr>
           <td>{{ linha.nome }}</td>
           <td colspan="2">
-            <form hx-post="/admin/contatos/{{ linha.codigo }}" style="display:flex; gap:6px;">
+            <form method="post" action="/admin/contatos/{{ linha.codigo }}" style="display:flex; gap:6px;">
               <input type="hidden" name="nome" value="{{ linha.nome }}">
               <input type="text" name="whatsapp_numero" value="{{ linha.numero }}" placeholder="5573999999999">
               <button type="submit" class="link-button">Salvar</button>

@@ -14,7 +14,7 @@
         <tr>
           <td>{{ p.nome }}</td>
           <td>
-            <form hx-post="/admin/prioridades/{{ p.id }}/editar" style="display:flex; gap:6px; align-items:center;">
+            <form method="post" action="/admin/prioridades/{{ p.id }}/editar" style="display:flex; gap:6px; align-items:center;">
               <input type="number" name="sla_horas" value="{{ p.sla_horas }}" style="width: 70px;">
               <input type="color" name="cor" value="{{ p.cor }}">
               <button type="submit" class="link-button">Salvar</button>
@@ -23,7 +23,7 @@
           <td><span class="badge" style="background: {{ p.cor }}">{{ p.cor }}</span></td>
           <td>{{ "Sim" if p.ativo else "Não" }}</td>
           <td>
-            <form hx-post="/admin/prioridades/{{ p.id }}/toggle">
+            <form method="post" action="/admin/prioridades/{{ p.id }}/toggle">
               <button type="submit" class="link-button">{{ "Desativar" if p.ativo else "Ativar" }}</button>
             </form>
           </td>
@@ -33,7 +33,7 @@
     </table>
 
     <h2>Nova prioridade</h2>
-    <form hx-post="/admin/prioridades" class="chamado-form" style="max-width: 300px;">
+    <form method="post" action="/admin/prioridades" class="chamado-form" style="max-width: 300px;">
       <label for="nome">Nome</label>
       <input type="text" id="nome" name="nome" required>
       <label for="ordem">Ordem</label>
