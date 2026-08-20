@@ -1,0 +1,59 @@
+name: Build e Deploy
+
+on:
+  push:
+    branches: [main]
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Login no GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build e push da imagem
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Rodar migrações do banco
+        run: |
+          kubectl run helpdesk-migrate-${{ github.run_id }} \
+            --rm -i --restart=Never \
+            --namespace chamados-cematel \
+            --image=${{ env.IMAGE }}:${{ github.sha }} \
+            --image-pull-policy=Always \
+            --overrides='{
+              "spec": {
+                "containers": [{
+                  "name": "migrate",
+                  "image": "${{ env.IMAGE }}:${{ github.sha }}",
+                  "command": ["alembic", "upgrade", "head"],
+                  "envFrom": [
+                    {"configMapRef": {"name": "helpdesk-config"}},
+                    {"secretRef": {"name": "helpdesk-secrets"}}
+                  ]
+                }]
+              }
+            }'
+
+      - name: Atualizar o deployment
+        run: |
+          kubectl set image deployment/helpdesk-backend \
+            backend=${{ env.IMAGE }}:${{ github.sha }} \
+            -n chamados-cematel
+          kubectl rollout status deployment/helpdesk-backend -n chamados-cematel --timeout=120s
