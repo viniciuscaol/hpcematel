@@ -9,6 +9,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.authorization import get_current_user_com_papel
 from app.auth.dependencies import get_current_user_optional
 from app.auth.security import create_access_token
 from app.config import settings
@@ -94,7 +95,7 @@ async def processar_login(
 @router.get("/dashboard")
 async def tela_dashboard(
     request: Request,
-    usuario: dict | None = Depends(get_current_user_optional),
+    usuario: dict = Depends(get_current_user_com_papel),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     if usuario is None:

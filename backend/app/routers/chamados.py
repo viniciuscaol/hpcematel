@@ -17,9 +17,10 @@ from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services.contato_service import buscar_numero_whatsapp
+from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO, buscar_numero_whatsapp
 from app.services.notificacao_service import notificar_atribuicao_individual, notificar_mudanca_status, notificar_novo_chamado
 from app.auth.dependencies import get_current_user
+from app.auth.authorization import exigir_papel, get_current_user_com_papel
 from app.database.helpdesk_db import get_helpdesk_db
 from app.models.chamado import Categoria, ChamadoAnexo, Prioridade
 from app.services.anexo_service import ArquivoInvalido, caminho_fisico_anexo, salvar_anexo

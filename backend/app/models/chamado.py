@@ -192,6 +192,7 @@ class UsuarioContato(Base):
     usuario_codigo: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
     usuario_nome_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
     whatsapp_numero: Mapped[str | None] = mapped_column(String(20))
+    papel: Mapped[str] = mapped_column(String(20), nullable=False, default="CAC")
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

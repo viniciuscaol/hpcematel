@@ -8,18 +8,19 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.authorization import exigir_papel
 from app.auth.dependencies import get_current_user
 from app.database.helpdesk_db import get_helpdesk_db
 from app.models.chamado import Categoria, Prioridade, Status
 from app.services.chamado_service import listar_responsaveis_possiveis
-from app.services.contato_service import listar_contatos, salvar_contato
+from app.services.contato_service import PAPEL_ADMIN, PAPEL_CAC, PAPEL_TECNICO, PAPEIS_VALIDOS, listar_contatos, salvar_contato
 from app.templates_config import templates
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
 @router.get("")
-async def painel_admin(request: Request, usuario: dict = Depends(get_current_user)):
+async def painel_admin(request: Request, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN))):
     return templates.TemplateResponse("admin/painel.html", {"request": request, "usuario": usuario})
 
 
@@ -27,7 +28,7 @@ async def painel_admin(request: Request, usuario: dict = Depends(get_current_use
 
 @router.get("/categorias")
 async def listar_categorias(
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    request: Request, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     categorias = (await db.execute(select(Categoria).order_by(Categoria.nome))).scalars().all()
     return templates.TemplateResponse(
@@ -37,7 +38,7 @@ async def listar_categorias(
 
 @router.post("/categorias")
 async def criar_categoria(
-    usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db), nome: str = Form(...),
+    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db), nome: str = Form(...),
 ):
     db.add(Categoria(nome=nome.strip(), ativo=True))
     await db.commit()
@@ -46,7 +47,7 @@ async def criar_categoria(
 
 @router.post("/categorias/{categoria_id}/toggle")
 async def alternar_categoria(
-    categoria_id: int, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    categoria_id: int, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     categoria = await db.get(Categoria, categoria_id)
     if categoria:
@@ -59,7 +60,7 @@ async def alternar_categoria(
 
 @router.get("/prioridades")
 async def listar_prioridades(
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    request: Request, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     prioridades = (await db.execute(select(Prioridade).order_by(Prioridade.ordem))).scalars().all()
     return templates.TemplateResponse(
@@ -69,7 +70,7 @@ async def listar_prioridades(
 
 @router.post("/prioridades")
 async def criar_prioridade(
-    usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     nome: str = Form(...), ordem: int = Form(...), cor: str = Form(...), sla_horas: int = Form(...),
 ):
     db.add(Prioridade(nome=nome.strip(), ordem=ordem, cor=cor, sla_horas=sla_horas, ativo=True))
@@ -79,7 +80,7 @@ async def criar_prioridade(
 
 @router.post("/prioridades/{prioridade_id}/editar")
 async def editar_prioridade(
-    prioridade_id: int, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    prioridade_id: int, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     sla_horas: int = Form(...), cor: str = Form(...),
 ):
     prioridade = await db.get(Prioridade, prioridade_id)
@@ -92,7 +93,7 @@ async def editar_prioridade(
 
 @router.post("/prioridades/{prioridade_id}/toggle")
 async def alternar_prioridade(
-    prioridade_id: int, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    prioridade_id: int, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     prioridade = await db.get(Prioridade, prioridade_id)
     if prioridade:
@@ -105,7 +106,7 @@ async def alternar_prioridade(
 
 @router.get("/status")
 async def listar_status_admin(
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    request: Request, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     status_list = (await db.execute(select(Status).order_by(Status.ordem))).scalars().all()
     return templates.TemplateResponse(
@@ -115,7 +116,7 @@ async def listar_status_admin(
 
 @router.post("/status/{status_id}/editar")
 async def editar_status(
-    status_id: int, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    status_id: int, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     cor: str = Form(...),
 ):
     status = await db.get(Status, status_id)
@@ -129,27 +130,36 @@ async def editar_status(
 
 @router.get("/contatos")
 async def listar_contatos_admin(
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    request: Request, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
 ):
     responsaveis = await listar_responsaveis_possiveis()
     contatos = await listar_contatos(db)
     numero_por_codigo = {c.usuario_codigo: c.whatsapp_numero for c in contatos}
+    papel_por_codigo = {c.usuario_codigo: c.papel for c in contatos}
 
     linhas = [
-        {"codigo": r["codigo"], "nome": r["nome"], "numero": numero_por_codigo.get(r["codigo"], "")}
+        {
+            "codigo": r["codigo"], "nome": r["nome"],
+            "numero": numero_por_codigo.get(r["codigo"], ""),
+            "papel": papel_por_codigo.get(r["codigo"], PAPEL_CAC),
+        }
         for r in responsaveis
     ]
 
     return templates.TemplateResponse(
-        "admin/contatos.html", {"request": request, "usuario": usuario, "linhas": linhas},
+        "admin/contatos.html",
+        {"request": request, "usuario": usuario, "linhas": linhas, "papeis": [PAPEL_CAC, PAPEL_TECNICO, PAPEL_ADMIN]},
     )
 
 
 @router.post("/contatos/{usuario_codigo}")
 async def salvar_contato_admin(
-    usuario_codigo: int, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
-    nome: str = Form(...), whatsapp_numero: str = Form(...),
+    usuario_codigo: int,
+    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)),
+    db: AsyncSession = Depends(get_helpdesk_db),
+    nome: str = Form(...),
+    whatsapp_numero: str = Form(""),
+    papel: str = Form(PAPEL_CAC),
 ):
-    if whatsapp_numero.strip():
-        await salvar_contato(db, usuario_codigo, nome, whatsapp_numero)
+    await salvar_contato(db, usuario_codigo, nome, whatsapp_numero or None, papel)
     return RedirectResponse("/admin/contatos", status_code=303)

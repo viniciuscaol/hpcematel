@@ -1,23 +1,28 @@
 {% extends "base.html" %}
-{% block title %}Contatos WhatsApp - {{ app_name }}{% endblock %}
+{% block title %}Contatos e Papéis - {{ app_name }}{% endblock %}
 {% block content %}
 <div class="app-shell">
   {% include "partials/topbar.html" %}
   <main class="content">
     <a href="/admin" class="voltar-link">&larr; Administração</a>
-    <h1>Contatos WhatsApp</h1>
-    <p class="sem-resultado">Cadastre o número de WhatsApp de cada pessoa para receber notificação individual quando for atribuída a um chamado. Formato: DDI + DDD + número, sem espaços (ex: 5573999999999).</p>
+    <h1>Contatos e Papéis</h1>
+    <p class="sem-resultado">Defina o papel de cada usuário (CAC, TÉCNICO ou ADMIN) e, se quiser, o WhatsApp para notificação individual.</p>
 
     <table class="chamados-tabela">
-      <thead><tr><th>Usuário</th><th>Número WhatsApp</th><th></th></tr></thead>
+      <thead><tr><th>Usuário</th><th>Papel</th><th>WhatsApp</th><th></th></tr></thead>
       <tbody>
         {% for linha in linhas %}
         <tr>
           <td>{{ linha.nome }}</td>
-          <td colspan="2">
-            <form method="post" action="/admin/contatos/{{ linha.codigo }}" style="display:flex; gap:6px;">
+          <td colspan="3">
+            <form method="post" action="/admin/contatos/{{ linha.codigo }}" style="display:flex; gap:8px; align-items:center;">
               <input type="hidden" name="nome" value="{{ linha.nome }}">
-              <input type="text" name="whatsapp_numero" value="{{ linha.numero }}" placeholder="5573999999999">
+              <select name="papel">
+                {% for p in papeis %}
+                <option value="{{ p }}" {% if p == linha.papel %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+              </select>
+              <input type="text" name="whatsapp_numero" value="{{ linha.numero }}" placeholder="5573999999999" style="flex:1;">
               <button type="submit" class="link-button">Salvar</button>
             </form>
           </td>
