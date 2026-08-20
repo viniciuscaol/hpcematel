@@ -15,6 +15,7 @@
 
     <div class="chamado-header">
       <h1>{{ chamado.numero_chamado }} - {{ chamado.titulo }}</h1>
+      {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
       <form hx-post="/chamados/{{ chamado.id }}/status" class="status-form">
         <select name="status_id" onchange="this.form.requestSubmit()">
           {% for status in status_list %}
@@ -23,6 +24,9 @@
         </select>
         <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
       </form>
+      {% else %}
+      <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
+      {% endif %}
     </div>
 
     <div class="chamado-grid">
@@ -92,7 +96,7 @@
               <a href="/chamados/{{ chamado.id }}/anexos/{{ anexo.id }}">{{ anexo.nome_original }}</a>
               <span class="anexo-meta">{{ (anexo.tamanho_bytes / 1024) | round(1) }} KB · {{ anexo.enviado_por_nome_snapshot }} · {{ anexo.criado_em | data_br }}</span>
             </div>
-            {% if not chamado.excluido %}
+            {% if not chamado.excluido and usuario.papel in ['TECNICO', 'ADMIN'] %}
             <form hx-post="/chamados/{{ chamado.id }}/anexos/{{ anexo.id }}/excluir" hx-confirm="Excluir o anexo '{{ anexo.nome_original }}'?">
               <button type="submit" class="anexo-excluir">Excluir</button>
             </form>

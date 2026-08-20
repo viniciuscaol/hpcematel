@@ -5,11 +5,13 @@
     </svg>
     {{ app_name }}
   </span>
-  <nav class="main-nav">
+    <nav class="main-nav">
     <a href="/dashboard">Dashboard</a>
     <a href="/chamados">Chamados</a>
     <a href="/chamados/novo">Novo Chamado</a>
+    {% if usuario.papel == 'ADMIN' %}
     <a href="/admin">Administração</a>
+    {% endif %}
   </nav>
   <div class="user-menu">
     <span>{{ usuario.nome }}</span>
