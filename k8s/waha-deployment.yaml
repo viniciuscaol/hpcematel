@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: waha
+  namespace: chamados-cematel
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: waha
+  template:
+    metadata:
+      labels:
+        app: waha
+    spec:
+      containers:
+        - name: waha
+          image: devlikeapro/waha:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: WHATSAPP_DEFAULT_ENGINE
+              value: "NOWEB"
+            - name: WHATSAPP_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: waha-secrets
+                  key: WHATSAPP_API_KEY
+          volumeMounts:
+            - name: sessions
+              mountPath: /app/.sessions
+      volumes:
+        - name: sessions
+          persistentVolumeClaim:
+            claimName: waha-sessions
