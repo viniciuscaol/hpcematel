@@ -3,6 +3,8 @@ FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+LABEL org.opencontainers.image.source="https://github.com/viniciuscaol/hpcematel"
+
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
