@@ -123,7 +123,7 @@ async def _contexto_tabela(
 @router.get("")
 async def tela_lista_chamados(
     request: Request,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(get_current_user_com_papel),
     db: AsyncSession = Depends(get_helpdesk_db),
     filtro: str = "abertos",
     data: str | None = None,
@@ -157,7 +157,7 @@ async def tabela_chamados(
 @router.get("/novo")
 async def tela_novo_chamado(
     request: Request,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(get_current_user_com_papel),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     opcoes = await _opcoes_edicao(db)
@@ -230,7 +230,7 @@ async def processar_novo_chamado(
 async def tela_detalhe_chamado(
     chamado_id: int,
     request: Request,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(get_current_user_com_papel),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     chamado = await obter_chamado(db, chamado_id)
