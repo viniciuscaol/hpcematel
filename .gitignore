@@ -3,4 +3,5 @@ __pycache__/
 *.pyc
 .venv/
 POSTGRES_PASSWORD
-qr.png
+qr*
+Token*
