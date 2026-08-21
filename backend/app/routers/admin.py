@@ -163,9 +163,3 @@ async def salvar_contato_admin(
 ):
     await salvar_contato(db, usuario_codigo, nome, whatsapp_numero or None, papel)
     return RedirectResponse("/admin/contatos", status_code=303)
-
-@router.get("/promover-vinicius")
-async def promover_vinicius(db: AsyncSession = Depends(get_helpdesk_db)):
-    # Substitua o número 1 pelo seu ID/Código real de usuário
-    await salvar_contato(db, usuario_codigo=76, nome="Vinicius", whatsapp_numero="", papel=PAPEL_ADMIN)
-    return {"mensagem": "Vinicius agora é administrador!"}
