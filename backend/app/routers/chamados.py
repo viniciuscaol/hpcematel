@@ -26,11 +26,11 @@ from app.models.chamado import Categoria, ChamadoAnexo, Prioridade
 from app.services.anexo_service import ArquivoInvalido, caminho_fisico_anexo, salvar_anexo
 from app.services.chamado_service import (
     POR_PAGINA_PADRAO,
-    STATUS_ENCERRADO_ID,
+    STATUS_CANCELADO_ID,
     STATUS_RESOLVIDO_ID,
     ClienteNaoEncontrado,
     adicionar_interacao,
-    atualizar_categoria,
+    atualizar_categorias,
     atualizar_prioridade,
     atualizar_responsavel,
     atualizar_status,
@@ -178,8 +178,8 @@ async def processar_novo_chamado(
     db: AsyncSession = Depends(get_helpdesk_db),
     cliente_codigo: int = Form(...),
     titulo: str = Form(...),
-    descricao: str = Form(...),
-    categoria_id: int = Form(...),
+    descricao: str = Form(""),
+    categoria_ids: list[int] = Form(...),
     prioridade_id: int = Form(...),
     responsavel_codigo: int = Form(...),
 ):
@@ -191,7 +191,7 @@ async def processar_novo_chamado(
         chamado = await criar_chamado(
             db,
             cliente_codigo=cliente_codigo, titulo=titulo, descricao=descricao,
-            categoria_id=categoria_id, prioridade_id=prioridade_id,
+            categoria_ids=categoria_ids, prioridade_id=prioridade_id,
             responsavel_codigo=responsavel_codigo, responsavel_nome=responsavel_nome,
             criado_por_codigo=usuario["codigo"], criado_por_nome=usuario["nome"],
         )
@@ -252,7 +252,7 @@ async def alterar_status(
 ):
     chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"])
 
-    if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_ENCERRADO_ID):
+    if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
             chamado_id=chamado.id,
             cliente_nome=chamado.cliente_nome_snapshot,
@@ -265,12 +265,13 @@ async def alterar_status(
 
 
 @router.post("/{chamado_id}/categoria")
-async def alterar_categoria(
+async def alterar_categorias(
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
-    categoria_id: int = Form(...),
+    categoria_ids: list[int] = Form(...),
+
 ):
-    await atualizar_categoria(db, chamado_id, categoria_id, usuario["codigo"], usuario["nome"])
+    await atualizar_categorias(db, chamado_id, categoria_ids, usuario["codigo"], usuario["nome"])
     return _redirect_para_chamado(chamado_id)
 
 

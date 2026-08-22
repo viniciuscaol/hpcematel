@@ -1,7 +1,7 @@
 """
 Regras de negócio para chamados: criação, listagem, detalhe,
-mudança de status (incluindo reabertura), edição de campos, anexos,
-exclusão lógica e SLA.
+mudança de status (com pausa/retomada de SLA), categorias múltiplas,
+edição de campos, anexos, exclusão lógica.
 """
 from datetime import date, datetime, timezone
 
@@ -19,11 +19,9 @@ STATUS_INICIAL_ID = 1
 STATUS_EM_ANDAMENTO_ID = 2
 STATUS_AGUARDANDO_ID = 3
 STATUS_RESOLVIDO_ID = 4
-STATUS_ENCERRADO_ID = 5
+STATUS_CANCELADO_ID = 5
 
 POR_PAGINA_PADRAO = 20
-
-REATRIBUIR_AO_INTERAGIR = True
 
 
 class ClienteNaoEncontrado(Exception):
@@ -32,6 +30,11 @@ class ClienteNaoEncontrado(Exception):
 
 async def _status_finalizadores(db: AsyncSession) -> set[int]:
     result = await db.execute(select(Status.id).where(Status.finalizador.is_(True)))
+    return set(result.scalars().all())
+
+
+async def _status_pausa(db: AsyncSession) -> set[int]:
+    result = await db.execute(select(Status.id).where(Status.pausa_sla.is_(True)))
     return set(result.scalars().all())
 
 
@@ -50,28 +53,20 @@ async def _proximo_numero_chamado(db: AsyncSession, data_local: date) -> str:
         """),
         {"data": data_local},
     )
-    contador = resultado.scalar_one()
-    return f"{data_local.strftime('%d%m%y')}{contador:04d}"
+    return f"{data_local.strftime('%d%m%y')}{resultado.scalar_one():04d}"
 
 
 async def aplicar_status_sla(db: AsyncSession, chamado: Chamado) -> Chamado:
     finalizadores = await _status_finalizadores(db)
-    chamado.sla_status = calcular_status_sla(chamado.prazo_sla, chamado.status_id, finalizadores)
+    pausa = await _status_pausa(db)
+    chamado.sla_status = calcular_status_sla(chamado.prazo_sla, chamado.status_id, finalizadores, pausa)
     return chamado
 
 
 async def criar_chamado(
-    db: AsyncSession,
-    *,
-    cliente_codigo: int,
-    titulo: str,
-    descricao: str,
-    categoria_id: int,
-    prioridade_id: int,
-    responsavel_codigo: int,
-    responsavel_nome: str,
-    criado_por_codigo: int,
-    criado_por_nome: str,
+    db: AsyncSession, *, cliente_codigo: int, titulo: str, descricao: str | None,
+    categoria_ids: list[int], prioridade_id: int, responsavel_codigo: int, responsavel_nome: str,
+    criado_por_codigo: int, criado_por_nome: str,
 ) -> Chamado:
     cliente = await buscar_cliente_por_codigo(cliente_codigo)
     if cliente is None:
@@ -83,47 +78,38 @@ async def criar_chamado(
     numero_chamado = await _proximo_numero_chamado(db, data_local)
     prazo_sla = calcular_prazo_sla(agora, prioridade.sla_horas)
 
+    categorias_result = await db.execute(select(Categoria).where(Categoria.id.in_(categoria_ids)))
+    categorias = list(categorias_result.scalars().all())
+
     chamado = Chamado(
         numero_chamado=numero_chamado,
-        cliente_codigo=cliente["codigo"],
-        cliente_nome_snapshot=cliente["nome"],
-        cliente_contato_snapshot=cliente.get("nome_contato"),
-        cliente_telefone_snapshot=cliente.get("telefone_contato"),
-        titulo=titulo,
-        descricao=descricao,
-        categoria_id=categoria_id,
-        prioridade_id=prioridade_id,
-        status_id=STATUS_INICIAL_ID,
-        responsavel_codigo=responsavel_codigo,
-        responsavel_nome_snapshot=responsavel_nome,
-        criado_por_codigo=criado_por_codigo,
-        criado_por_nome_snapshot=criado_por_nome,
-        criado_em=agora,
-        prazo_sla=prazo_sla,
+        cliente_codigo=cliente["codigo"], cliente_nome_snapshot=cliente["nome"],
+        cliente_contato_snapshot=cliente.get("nome_contato"), cliente_telefone_snapshot=cliente.get("telefone_contato"),
+        titulo=titulo, descricao=descricao or None,
+        categorias=categorias, prioridade_id=prioridade_id, status_id=STATUS_INICIAL_ID,
+        responsavel_codigo=responsavel_codigo, responsavel_nome_snapshot=responsavel_nome,
+        criado_por_codigo=criado_por_codigo, criado_por_nome_snapshot=criado_por_nome,
+        criado_em=agora, prazo_sla=prazo_sla,
     )
     db.add(chamado)
     await db.flush()
 
+    nomes = ", ".join(c.nome for c in categorias)
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=criado_por_codigo, usuario_nome_snapshot=criado_por_nome,
-        campo_alterado="criacao", valor_anterior=None, valor_novo="Chamado criado",
+        campo_alterado="criacao", valor_anterior=None, valor_novo=f"Chamado criado ({nomes})",
     ))
-
     await db.commit()
-    await db.refresh(chamado)
-    return chamado
+    db.expire_all()
+    return await obter_chamado(db, chamado.id)
 
 
 async def listar_responsaveis_possiveis() -> list[dict]:
     return await listar_usuarios_helpdesk()
 
 
-def _query_base_chamados(
-    apenas_abertos: bool, status_abertos_ids: list[int],
-    data_local: date | None, busca: str | None, cliente_codigo: int | None,
-):
+def _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo):
     from app.utils.datas import intervalo_utc_do_dia
-
     condicoes = [Chamado.excluido.is_(False)]
     if apenas_abertos:
         condicoes.append(Chamado.status_id.in_(status_abertos_ids))
@@ -134,38 +120,29 @@ def _query_base_chamados(
     if busca:
         termo = f"%{busca.strip()}%"
         condicoes.append(or_(
-            Chamado.titulo.ilike(termo),
-            Chamado.cliente_nome_snapshot.ilike(termo),
-            Chamado.responsavel_nome_snapshot.ilike(termo),
-            Chamado.numero_chamado.ilike(termo),
+            Chamado.titulo.ilike(termo), Chamado.cliente_nome_snapshot.ilike(termo),
+            Chamado.responsavel_nome_snapshot.ilike(termo), Chamado.numero_chamado.ilike(termo),
         ))
     if cliente_codigo is not None:
         condicoes.append(Chamado.cliente_codigo == cliente_codigo)
     return condicoes
 
 
-async def contar_chamados(
-    db: AsyncSession, apenas_abertos: bool = True, data_local: date | None = None,
-    busca: str | None = None, cliente_codigo: int | None = None,
-) -> int:
+async def contar_chamados(db, apenas_abertos=True, data_local=None, busca=None, cliente_codigo=None) -> int:
     status_abertos_ids = await _status_abertos_ids(db) if apenas_abertos else []
     condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo)
     result = await db.execute(select(func.count(Chamado.id)).where(*condicoes))
     return result.scalar_one()
 
 
-async def listar_chamados(
-    db: AsyncSession, apenas_abertos: bool = True, data_local: date | None = None,
-    busca: str | None = None, cliente_codigo: int | None = None,
-    pagina: int = 1, por_pagina: int = POR_PAGINA_PADRAO,
-) -> list[Chamado]:
+async def listar_chamados(db, apenas_abertos=True, data_local=None, busca=None, cliente_codigo=None,
+                           pagina=1, por_pagina=POR_PAGINA_PADRAO) -> list[Chamado]:
     status_abertos_ids = await _status_abertos_ids(db) if apenas_abertos else []
     condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo)
     offset = max(pagina - 1, 0) * por_pagina
-
     query = (
         select(Chamado).where(*condicoes)
-        .options(selectinload(Chamado.categoria), selectinload(Chamado.prioridade), selectinload(Chamado.status))
+        .options(selectinload(Chamado.categorias), selectinload(Chamado.prioridade), selectinload(Chamado.status))
         .order_by(Chamado.criado_em.asc()).offset(offset).limit(por_pagina)
     )
     result = await db.execute(query)
@@ -179,7 +156,7 @@ async def obter_chamado(db: AsyncSession, chamado_id: int) -> Chamado | None:
     query = (
         select(Chamado).where(Chamado.id == chamado_id)
         .options(
-            selectinload(Chamado.categoria), selectinload(Chamado.prioridade), selectinload(Chamado.status),
+            selectinload(Chamado.categorias), selectinload(Chamado.prioridade), selectinload(Chamado.status),
             selectinload(Chamado.historico), selectinload(Chamado.interacoes), selectinload(Chamado.anexos),
         )
     )
@@ -195,9 +172,7 @@ async def listar_status_ativos(db: AsyncSession) -> list[Status]:
     return list(result.scalars().all())
 
 
-async def atualizar_status(
-    db: AsyncSession, chamado_id: int, novo_status_id: int, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def atualizar_status(db, chamado_id, novo_status_id, usuario_codigo, usuario_nome) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
@@ -206,24 +181,24 @@ async def atualizar_status(
 
     status_anterior = await db.get(Status, chamado.status_id)
     status_novo = await db.get(Status, novo_status_id)
-    era_finalizado = status_anterior.finalizador if status_anterior else False
-
-    chamado.status_id = novo_status_id
     agora = datetime.now(timezone.utc)
 
+    # Entrando em pausa (ex: Aguardando cliente): marca o início da pausa
+    if status_novo.pausa_sla and not status_anterior.pausa_sla:
+        chamado.sla_pausado_em = agora
+
+    # Saindo de uma pausa: estende o prazo pelo tempo que ficou pausado
+    if status_anterior.pausa_sla and not status_novo.pausa_sla and chamado.sla_pausado_em is not None:
+        tempo_pausado = agora - chamado.sla_pausado_em
+        chamado.prazo_sla = chamado.prazo_sla + tempo_pausado
+        chamado.sla_pausado_em = None
+
+    chamado.status_id = novo_status_id
     if status_novo.finalizador:
         if novo_status_id == STATUS_RESOLVIDO_ID and chamado.resolvido_em is None:
             chamado.resolvido_em = agora
-        if novo_status_id == STATUS_ENCERRADO_ID and chamado.encerrado_em is None:
+        if novo_status_id == STATUS_CANCELADO_ID and chamado.encerrado_em is None:
             chamado.encerrado_em = agora
-    elif era_finalizado:
-        # Reabertura: limpa datas de fechamento e recalcula um novo prazo de SLA
-        # a partir de agora, senão o chamado voltaria já "estourado".
-        chamado.resolvido_em = None
-        chamado.encerrado_em = None
-        prioridade = await db.get(Prioridade, chamado.prioridade_id)
-        chamado.prazo_sla = calcular_prazo_sla(agora, prioridade.sla_horas)
-        chamado.sla_notificado_status = None
 
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
@@ -232,33 +207,34 @@ async def atualizar_status(
         valor_novo=status_novo.nome if status_novo else None,
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def atualizar_categoria(
-    db: AsyncSession, chamado_id: int, nova_categoria_id: int, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def atualizar_categorias(db, chamado_id, categoria_ids, usuario_codigo, usuario_nome) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
-    if chamado.categoria_id == nova_categoria_id:
+
+    nomes_antigos = ", ".join(c.nome for c in chamado.categorias)
+    result = await db.execute(select(Categoria).where(Categoria.id.in_(categoria_ids)))
+    novas = list(result.scalars().all())
+    nomes_novos = ", ".join(c.nome for c in novas)
+
+    if nomes_antigos == nomes_novos:
         return chamado
-    categoria_anterior = await db.get(Categoria, chamado.categoria_id)
-    categoria_nova = await db.get(Categoria, nova_categoria_id)
-    chamado.categoria_id = nova_categoria_id
+
+    chamado.categorias = novas
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
-        campo_alterado="categoria",
-        valor_anterior=categoria_anterior.nome if categoria_anterior else None,
-        valor_novo=categoria_nova.nome if categoria_nova else None,
+        campo_alterado="categoria", valor_anterior=nomes_antigos or None, valor_novo=nomes_novos or None,
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def atualizar_prioridade(
-    db: AsyncSession, chamado_id: int, nova_prioridade_id: int, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def atualizar_prioridade(db, chamado_id, nova_prioridade_id, usuario_codigo, usuario_nome) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
@@ -274,62 +250,53 @@ async def atualizar_prioridade(
         valor_novo=prioridade_nova.nome if prioridade_nova else None,
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def atualizar_responsavel(
-    db: AsyncSession, chamado_id: int, novo_responsavel_codigo: int | None, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def atualizar_responsavel(db, chamado_id, novo_responsavel_codigo, usuario_codigo, usuario_nome) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
     if chamado.responsavel_codigo == novo_responsavel_codigo:
         return chamado
-
     nome_anterior = chamado.responsavel_nome_snapshot or "Não atribuído"
     novo_nome = "Não atribuído"
     if novo_responsavel_codigo:
         responsaveis = await listar_usuarios_helpdesk()
         encontrado = next((r for r in responsaveis if r["codigo"] == novo_responsavel_codigo), None)
         novo_nome = encontrado["nome"] if encontrado else "Não atribuído"
-
     chamado.responsavel_codigo = novo_responsavel_codigo
     chamado.responsavel_nome_snapshot = novo_nome if novo_responsavel_codigo else None
-
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
         campo_alterado="responsavel", valor_anterior=nome_anterior, valor_novo=novo_nome,
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def adicionar_interacao(
-    db: AsyncSession, chamado_id: int, usuario_codigo: int, usuario_nome: str, texto: str,
-) -> Chamado | None:
+async def adicionar_interacao(db, chamado_id, usuario_codigo, usuario_nome, texto) -> Chamado | None:
     db.add(ChamadoInteracao(
         chamado_id=chamado_id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome, texto=texto,
     ))
     await db.flush()
-
-    if REATRIBUIR_AO_INTERAGIR:
-        chamado = await obter_chamado(db, chamado_id)
-        if chamado is not None and chamado.responsavel_codigo != usuario_codigo:
-            nome_anterior = chamado.responsavel_nome_snapshot or "Não atribuído"
-            chamado.responsavel_codigo = usuario_codigo
-            chamado.responsavel_nome_snapshot = usuario_nome
-            db.add(ChamadoHistorico(
-                chamado_id=chamado_id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
-                campo_alterado="responsavel", valor_anterior=nome_anterior, valor_novo=usuario_nome,
-            ))
-
+    chamado = await obter_chamado(db, chamado_id)
+    if chamado is not None and chamado.responsavel_codigo != usuario_codigo:
+        nome_anterior = chamado.responsavel_nome_snapshot or "Não atribuído"
+        chamado.responsavel_codigo = usuario_codigo
+        chamado.responsavel_nome_snapshot = usuario_nome
+        db.add(ChamadoHistorico(
+            chamado_id=chamado_id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
+            campo_alterado="responsavel", valor_anterior=nome_anterior, valor_novo=usuario_nome,
+        ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def excluir_anexo(
-    db: AsyncSession, chamado_id: int, anexo_id: int, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def excluir_anexo(db, chamado_id, anexo_id, usuario_codigo, usuario_nome) -> Chamado | None:
     from app.models.chamado import ChamadoAnexo
     from app.services.anexo_service import caminho_fisico_anexo
     import os
@@ -337,24 +304,21 @@ async def excluir_anexo(
     anexo = await db.get(ChamadoAnexo, anexo_id)
     if anexo is None or anexo.chamado_id != chamado_id:
         return await obter_chamado(db, chamado_id)
-
     nome_original = anexo.nome_original
     caminho = caminho_fisico_anexo(chamado_id, anexo.nome_armazenado)
     if os.path.exists(caminho):
         os.remove(caminho)
     await db.delete(anexo)
-
     db.add(ChamadoHistorico(
         chamado_id=chamado_id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
         campo_alterado="anexo_excluido", valor_anterior=nome_original, valor_novo=None,
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)
 
 
-async def excluir_chamado(
-    db: AsyncSession, chamado_id: int, usuario_codigo: int, usuario_nome: str,
-) -> Chamado | None:
+async def excluir_chamado(db, chamado_id, usuario_codigo, usuario_nome) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None or chamado.excluido:
         return chamado
@@ -367,4 +331,5 @@ async def excluir_chamado(
         campo_alterado="exclusao", valor_anterior=None, valor_novo="Chamado excluído",
     ))
     await db.commit()
+    db.expire_all()
     return await obter_chamado(db, chamado_id)

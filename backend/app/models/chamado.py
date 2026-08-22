@@ -11,13 +11,15 @@ para cliente_codigo.
 from datetime import date, datetime
 
 from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
+    Boolean, 
+    Column, 
+    Date, 
+    DateTime, 
+    ForeignKey, 
+    Integer, 
+    String, 
+    Table, 
+    Text, 
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,6 +35,7 @@ class Status(Base):
     ordem: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cor: Mapped[str] = mapped_column(String(7), nullable=False, default="#6b7280")
     finalizador: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    pausa_sla: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
@@ -54,6 +57,12 @@ class Categoria(Base):
     nome: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
     ativo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
+chamado_categoria = Table(
+    "chamado_categoria",
+    Base.metadata,
+    Column("chamado_id", ForeignKey("chamado.id", ondelete="CASCADE"), primary_key=True),
+    Column("categoria_id", ForeignKey("categoria.id"), primary_key=True),
+)
 
 class Chamado(Base):
     __tablename__ = "chamado"
@@ -68,9 +77,9 @@ class Chamado(Base):
     cliente_telefone_snapshot: Mapped[str | None] = mapped_column(String(50))
 
     titulo: Mapped[str] = mapped_column(String(255), nullable=False)
-    descricao: Mapped[str] = mapped_column(Text, nullable=False)
+    descricao: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    categoria_id: Mapped[int] = mapped_column(ForeignKey("categoria.id"), nullable=False)
+    
     prioridade_id: Mapped[int] = mapped_column(ForeignKey("prioridade.id"), nullable=False)
     status_id: Mapped[int] = mapped_column(ForeignKey("status.id"), nullable=False)
 
@@ -97,8 +106,9 @@ class Chamado(Base):
     sla_notificado_status: Mapped[str | None] = mapped_column(String(20))
     
     prazo_sla: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    sla_pausado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
-    categoria: Mapped["Categoria"] = relationship()
+    categorias: Mapped[list["Categoria"]] = relationship(secondary=chamado_categoria)
     prioridade: Mapped["Prioridade"] = relationship()
     status: Mapped["Status"] = relationship()
     historico: Mapped[list["ChamadoHistorico"]] = relationship(

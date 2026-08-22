@@ -84,7 +84,7 @@
         </p>
 
         <h2>Descrição</h2>
-        <p class="chamado-descricao">{{ chamado.descricao }}</p>
+        <p class="chamado-descricao">{{ chamado.descricao or "Sem descrição." }}</p>
 
         <h2>Anexos</h2>
         {% if erro_anexo %}<p class="error-message">{{ erro_anexo }}</p>{% endif %}

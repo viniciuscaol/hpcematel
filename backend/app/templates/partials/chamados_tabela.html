@@ -35,7 +35,7 @@
       <td class="numero-chamado">{{ chamado.numero_chamado }}</td>
       <td>{{ chamado.titulo }}</td>
       <td>{{ chamado.cliente_nome_snapshot }}</td>
-      <td>{{ chamado.categoria.nome }}</td>
+      <td>{{ chamado.categorias | map(attribute='nome') | join(', ') }}</td>
       <td><span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span></td>
       <td>{{ chamado.responsavel_nome_snapshot or "Não atribuído" }}</td>
       <td><span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span></td>
