@@ -46,7 +46,7 @@ async def notificar_novo_chamado(
     titulo: str,
     numero_chamado: str,
     prioridade_nome: str,
-    categoria_nome: str,
+    categoria_nomes: str,
     responsavel_nome: str,
 ) -> None:
     mensagem = (

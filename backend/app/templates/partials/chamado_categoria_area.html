@@ -1,7 +1,8 @@
 <form hx-post="/chamados/{{ chamado.id }}/categoria" hx-target="#categoria-area" hx-swap="innerHTML" class="campo-editavel">
-  <select name="categoria_id" onchange="this.form.requestSubmit()">
+  <select name="categoria_ids" multiple size="4" onchange="this.form.requestSubmit()">
+    {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
     {% for categoria in categorias %}
-    <option value="{{ categoria.id }}" {% if categoria.id == chamado.categoria_id %}selected{% endif %}>{{ categoria.nome }}</option>
+    <option value="{{ categoria.id }}" {% if categoria.id in ids_atuais %}selected{% endif %}>{{ categoria.nome }}</option>
     {% endfor %}
   </select>
 </form>

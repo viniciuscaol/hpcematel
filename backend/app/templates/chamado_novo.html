@@ -24,10 +24,10 @@
       <input type="text" id="titulo" name="titulo" required maxlength="255">
 
       <label for="descricao">Descrição</label>
-      <textarea id="descricao" name="descricao" rows="5" required></textarea>
+      <textarea id="descricao" name="descricao" rows="5"></textarea>
 
-      <label for="categoria_id">Categoria</label>
-      <select id="categoria_id" name="categoria_id" required>
+      <label for="categoria_ids">Categorias</label>
+      <select id="categoria_ids" name="categoria_ids" multiple size="6" required>
         {% for categoria in categorias %}
         <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
         {% endfor %}
