@@ -209,7 +209,7 @@ async def processar_novo_chamado(
         titulo=chamado.titulo,
         numero_chamado=chamado.numero_chamado,
         prioridade_nome=chamado.prioridade.nome,
-        categoria_nome=chamado.categoria.nome,
+        categoria_nome=", ".join(c.nome for c in chamado.categorias),
         responsavel_nome=chamado.responsavel_nome_snapshot,
     )
 
