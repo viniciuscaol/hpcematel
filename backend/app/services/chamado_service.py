@@ -93,16 +93,16 @@ async def criar_chamado(
     )
     db.add(chamado)
     await db.flush()
-    chamado_id = chamado.id  # captura o valor antes do expire_all, evita recarregar às cegas fora de contexto assíncrono
+    chamado_id = chamado.id  # captura antes do expire_all, evita reler atributo expirado fora de contexto async
 
     nomes = ", ".join(c.nome for c in categorias)
     db.add(ChamadoHistorico(
-        chamado_id=chamado.id, usuario_codigo=criado_por_codigo, usuario_nome_snapshot=criado_por_nome,
+        chamado_id=chamado_id, usuario_codigo=criado_por_codigo, usuario_nome_snapshot=criado_por_nome,
         campo_alterado="criacao", valor_anterior=None, valor_novo=f"Chamado criado ({nomes})",
     ))
     await db.commit()
     db.expire_all()
-    return await obter_chamado(db, chamado.id)
+    return await obter_chamado(db, chamado_id)
 
 
 async def listar_responsaveis_possiveis() -> list[dict]:
