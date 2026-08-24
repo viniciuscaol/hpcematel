@@ -53,7 +53,7 @@ async def notificar_novo_chamado(
         f"📋 *{cliente_nome}*\n"
         f"{titulo}\n\n"
         f"Nº: {numero_chamado}\n"
-        f"Categoria: {categoria_nome}\n"
+        f"Categoria: {categoria_nomes}\n"
         f"Prioridade: {prioridade_nome}\n"
         f"Responsável: {responsavel_nome}\n\n"
         f"🔗 {_link(chamado_id)}"
