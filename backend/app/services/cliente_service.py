@@ -35,8 +35,7 @@ _TERMO_SEM_ACENTO = _sem_acento_sql("$1")
 _QUERY_BUSCA = f"""
     SELECT codigo, nome, nome_contato, telefone_contato, email
     FROM cliente
-    WHERE status_cliente = {STATUS_CLIENTE_ATIVO}
-      AND {_NOME_SEM_ACENTO} LIKE '%' || {_TERMO_SEM_ACENTO} || '%'
+    WHERE status_cliente = {_NOME_SEM_ACENTO} LIKE '%' || {_TERMO_SEM_ACENTO} || '%'
     ORDER BY nome
     LIMIT 20
 """
@@ -44,7 +43,7 @@ _QUERY_BUSCA = f"""
 _QUERY_POR_CODIGO = f"""
     SELECT codigo, nome, nome_contato, telefone_contato, email
     FROM cliente
-    WHERE codigo = $1 AND status_cliente = {STATUS_CLIENTE_ATIVO}
+    WHERE codigo = $1
     LIMIT 1
 """
 
