@@ -26,12 +26,15 @@
       <label for="descricao">Descrição</label>
       <textarea id="descricao" name="descricao" rows="5"></textarea>
 
-      <label for="categoria_ids">Categorias</label>
-      <select id="categoria_ids" name="categoria_ids" multiple size="6" required>
+      <label>Categorias</label>
+      <div class="categoria-pills">
         {% for categoria in categorias %}
-        <option value="{{ categoria.id }}">{{ categoria.nome }}</option>
+        <label class="categoria-pill">
+          <input type="checkbox" name="categoria_ids" value="{{ categoria.id }}">
+          <span>{{ categoria.nome }}</span>
+        </label>
         {% endfor %}
-      </select>
+      </div>
 
       <label for="prioridade_id">Prioridade</label>
       <select id="prioridade_id" name="prioridade_id" required>
