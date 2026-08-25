@@ -30,7 +30,7 @@ def _sem_acento_sql(expressao: str) -> str:
 
 
 _NOME_SEM_ACENTO = _sem_acento_sql("nome")
-_TERMO_SEM_ACENTO = _sem_acento_sql("$1")
+_TERMO_SEM_ACENTO = _sem_acento_sql("$1::text")
 
 _QUERY_BUSCA = f"""
     SELECT codigo, nome, nome_contato, telefone_contato, email
