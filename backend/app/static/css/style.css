@@ -390,3 +390,46 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   background: none; border: none; color: var(--color-accent);
   font-size: 0.78rem; cursor: pointer; text-decoration: underline; white-space: nowrap;
 }
+
+.categoria-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.75rem;
+}
+
+.categoria-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.4rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #d1d5db;
+  background: white;
+  font-size: 0.85rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.categoria-pill input[type="checkbox"] {
+  /* esconde a caixinha nativa, o visual vem todo da pílula */
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.categoria-pill:hover {
+  border-color: var(--color-primary);
+}
+
+.categoria-pill:has(input:checked) {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.categoria-pills-compact .categoria-pill {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}

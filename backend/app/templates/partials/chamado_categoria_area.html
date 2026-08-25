@@ -1,8 +1,9 @@
-<form hx-post="/chamados/{{ chamado.id }}/categoria" hx-target="#categoria-area" hx-swap="innerHTML" class="campo-editavel">
-  <select name="categoria_ids" multiple size="4" onchange="this.form.requestSubmit()">
-    {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
-    {% for categoria in categorias %}
-    <option value="{{ categoria.id }}" {% if categoria.id in ids_atuais %}selected{% endif %}>{{ categoria.nome }}</option>
-    {% endfor %}
-  </select>
+<form hx-post="/chamados/{{ chamado.id }}/categoria" hx-target="#categoria-area" hx-swap="innerHTML" class="categoria-pills categoria-pills-compact">
+  {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
+  {% for categoria in categorias %}
+  <label class="categoria-pill {% if categoria.id in ids_atuais %}categoria-pill-marcada{% endif %}">
+    <input type="checkbox" name="categoria_ids" value="{{ categoria.id }}" {% if categoria.id in ids_atuais %}checked{% endif %} onchange="this.form.requestSubmit()">
+    <span>{{ categoria.nome }}</span>
+  </label>
+  {% endfor %}
 </form>
