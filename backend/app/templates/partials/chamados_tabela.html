@@ -15,7 +15,7 @@
 </div>
 
 {% if chamados %}
-<table class="chamados-tabela">
+<table class="chamados-tabela chamados-tabela-responsiva">
   <thead>
     <tr>
       <th>Nº Chamado</th>
@@ -32,20 +32,21 @@
   <tbody>
     {% for chamado in chamados %}
     <tr onclick="window.location='/chamados/{{ chamado.id }}'">
-      <td class="numero-chamado">{{ chamado.numero_chamado }}</td>
-      <td>{{ chamado.titulo }}</td>
-      <td>{{ chamado.cliente_nome_snapshot }}</td>
-      <td>{{ chamado.categorias | map(attribute='nome') | join(', ') }}</td>
-      <td><span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span></td>
-      <td>{{ chamado.responsavel_nome_snapshot or "Não atribuído" }}</td>
-      <td><span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span></td>
-      <td>
+      <td data-label="Nº Chamado" class="numero-chamado">{{ chamado.numero_chamado }}</td>
+      <td data-label="Título">{{ chamado.titulo }}</td>
+      <td data-label="Cliente">{{ chamado.cliente_nome_snapshot }}</td>
+      <td data-label="Categoria">{{ chamado.categorias | map(attribute='nome') | join(', ') }}</td>
+      <td data-label="Prioridade"><span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span></td>
+      <td data-label="Responsável">{{ chamado.responsavel_nome_snapshot or "Não atribuído" }}</td>
+      <td data-label="Status"><span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span></td>
+      <td data-label="SLA">
         {% if chamado.sla_status == "estourado" %}<span class="badge-sla badge-sla-estourado">Estourado</span>
         {% elif chamado.sla_status == "proximo" %}<span class="badge-sla badge-sla-proximo">Atenção</span>
         {% elif chamado.sla_status == "ok" %}<span class="badge-sla badge-sla-ok">No prazo</span>
+        {% elif chamado.sla_status == "pausado" %}<span class="badge-sla badge-sla-neutro">Pausado</span>
         {% else %}<span class="badge-sla badge-sla-neutro">-</span>{% endif %}
       </td>
-      <td>{{ chamado.criado_em | data_br }}</td>
+      <td data-label="Criado em">{{ chamado.criado_em | data_br }}</td>
     </tr>
     {% endfor %}
   </tbody>
