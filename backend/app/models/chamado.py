@@ -11,16 +11,7 @@ para cliente_codigo.
 from datetime import date, datetime
 
 from sqlalchemy import (
-    Boolean, 
-    Column, 
-    Date, 
-    DateTime, 
-    ForeignKey, 
-    Integer, 
-    String, 
-    Table, 
-    Text, 
-    func,
+    Boolean, Column, Date, DateTime, Float, ForeignKey, Integer, String, Table, Text, func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -107,6 +98,9 @@ class Chamado(Base):
     
     prazo_sla: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     sla_pausado_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    fechado_latitude: Mapped[float | None] = mapped_column(Float)
+    fechado_longitude: Mapped[float | None] = mapped_column(Float)
 
     categorias: Mapped[list["Categoria"]] = relationship(secondary=chamado_categoria)
     prioridade: Mapped["Prioridade"] = relationship()

@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Painel Técnico - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <h1>Painel Técnico</h1>
+    <p class="sem-resultado">Chamados em aberto disponíveis para atendimento.</p>
+
+    {% if chamados %}
+    <div class="tecnico-cards">
+      {% for chamado in chamados %}
+      <div class="tecnico-card">
+        <div class="tecnico-card-header">
+          <span class="numero-chamado">{{ chamado.numero_chamado }}</span>
+          <span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span>
+        </div>
+        <h3>{{ chamado.titulo }}</h3>
+        <p class="tecnico-card-cliente">{{ chamado.cliente_nome_snapshot }}</p>
+        <p class="tecnico-card-categorias">{{ chamado.categorias | map(attribute='nome') | join(', ') }}</p>
+        {% if chamado.sla_status == "estourado" %}<span class="badge-sla badge-sla-estourado">SLA Estourado</span>
+        {% elif chamado.sla_status == "proximo" %}<span class="badge-sla badge-sla-proximo">SLA Atenção</span>{% endif %}
+        <form hx-post="/chamados/{{ chamado.id }}/assumir">
+          <button type="submit" class="button-link tecnico-assumir-btn" hx-disabled-elt="this">Assumir Chamado</button>
+        </form>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="sem-resultado">Nenhum chamado em aberto no momento.</p>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

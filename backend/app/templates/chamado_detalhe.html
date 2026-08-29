@@ -86,6 +86,13 @@
           {% elif chamado.sla_status == "ok" %}<span class="badge-sla badge-sla-ok">No prazo</span>{% endif %}
         </p>
 
+        {% if usuario.papel == 'ADMIN' and chamado.fechado_latitude and chamado.fechado_longitude %}
+        <p>
+          <strong>Local do fechamento:</strong>
+          <a href="https://www.google.com/maps?q={{ chamado.fechado_latitude }},{{ chamado.fechado_longitude }}" target="_blank" rel="noopener">Ver no mapa</a>
+        </p>
+        {% endif %}
+
         <h2>Descrição</h2>
         <p class="chamado-descricao">{{ chamado.descricao or "Sem descrição." }}</p>
 

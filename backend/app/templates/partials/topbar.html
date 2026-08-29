@@ -12,6 +12,9 @@
     {% if usuario.papel == 'ADMIN' %}
     <a href="/admin">Administração</a>
     {% endif %}
+    {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
+    <a href="/tecnico">Técnico</a>
+    {% endif %}
   </nav>
   <div class="user-menu">
     <span>{{ usuario.nome }}</span>

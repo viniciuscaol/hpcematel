@@ -9,7 +9,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.auth.authorization import get_current_user_com_papel
+from app.auth.authorization import get_current_user_com_papel, exigir_papel
+from app.services.chamado_service import listar_chamados_para_assumir
+from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO
 from app.auth.dependencies import get_current_user_optional
 from app.auth.security import create_access_token
 from app.config import settings
@@ -112,6 +114,15 @@ async def tela_dashboard(
         "recentes": await listar_chamados_recentes(db),
     }
     return templates.TemplateResponse("dashboard.html", contexto)
+
+@router.get("/tecnico")
+async def tela_tecnico(
+    request: Request,
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
+    db: AsyncSession = Depends(get_helpdesk_db),
+):
+    chamados = await listar_chamados_para_assumir(db)
+    return templates.TemplateResponse("tecnico.html", {"request": request, "usuario": usuario, "chamados": chamados})
 
 
 @router.post("/logout")
