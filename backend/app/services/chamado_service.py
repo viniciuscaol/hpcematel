@@ -337,7 +337,7 @@ async def excluir_chamado(db, chamado_id, usuario_codigo, usuario_nome) -> Chama
     db.expire_all()
     return await obter_chamado(db, chamado_id)
 
-    async def listar_chamados_para_assumir(db) -> list[Chamado]:
+async def listar_chamados_para_assumir(db) -> list[Chamado]:
     """Chamados no status inicial 'Aberto', disponíveis para um técnico assumir."""
     query = (
         select(Chamado)
