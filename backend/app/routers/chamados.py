@@ -28,6 +28,8 @@ from app.services.chamado_service import (
     POR_PAGINA_PADRAO,
     STATUS_CANCELADO_ID,
     STATUS_RESOLVIDO_ID,
+    assumir_chamado,
+    listar_chamados_para_assumir,
     ClienteNaoEncontrado,
     adicionar_interacao,
     atualizar_categorias,
@@ -240,27 +242,25 @@ async def tela_detalhe_chamado(
     opcoes = await _opcoes_edicao(db)
     return templates.TemplateResponse(
         "chamado_detalhe.html",
-        {"request": request, "usuario": usuario, "chamado": chamado, **opcoes},
+        {"request": request, "usuario": usuario, "chamado": chamado, "status_resolvido_id": STATUS_RESOLVIDO_ID, **opcoes},
     )
 
 
 @router.post("/{chamado_id}/status")
 async def alterar_status(
     chamado_id: int,
-    usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     status_id: int = Form(...),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
 ):
-    chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"])
+    chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude, longitude)
 
     if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
-            chamado_id=chamado.id,
-            cliente_nome=chamado.cliente_nome_snapshot,
-            titulo=chamado.titulo,
-            numero_chamado=chamado.numero_chamado,
-            status_nome=chamado.status.nome,
+            chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
+            titulo=chamado.titulo, numero_chamado=chamado.numero_chamado, status_nome=chamado.status.nome,
         )
-
     return _redirect_para_chamado(chamado_id)
 
 
@@ -379,3 +379,12 @@ async def baixar_anexo(
 
     caminho = caminho_fisico_anexo(chamado_id, anexo.nome_armazenado)
     return FileResponse(caminho, filename=anexo.nome_original, media_type=anexo.tipo_mime)
+
+@router.post("/{chamado_id}/assumir")
+async def assumir(
+    chamado_id: int,
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
+    db: AsyncSession = Depends(get_helpdesk_db),
+):
+    await assumir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
+    return _redirect_para_chamado(chamado_id)

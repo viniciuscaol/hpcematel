@@ -173,7 +173,10 @@ async def listar_status_ativos(db: AsyncSession) -> list[Status]:
     return list(result.scalars().all())
 
 
-async def atualizar_status(db, chamado_id, novo_status_id, usuario_codigo, usuario_nome) -> Chamado | None:
+async def atualizar_status(
+    db, chamado_id, novo_status_id, usuario_codigo, usuario_nome,
+    latitude: float | None = None, longitude: float | None = None,
+) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
@@ -184,20 +187,19 @@ async def atualizar_status(db, chamado_id, novo_status_id, usuario_codigo, usuar
     status_novo = await db.get(Status, novo_status_id)
     agora = datetime.now(timezone.utc)
 
-    # Entrando em pausa (ex: Aguardando cliente): marca o início da pausa
     if status_novo.pausa_sla and not status_anterior.pausa_sla:
         chamado.sla_pausado_em = agora
-
-    # Saindo de uma pausa: estende o prazo pelo tempo que ficou pausado
     if status_anterior.pausa_sla and not status_novo.pausa_sla and chamado.sla_pausado_em is not None:
-        tempo_pausado = agora - chamado.sla_pausado_em
-        chamado.prazo_sla = chamado.prazo_sla + tempo_pausado
+        chamado.prazo_sla = chamado.prazo_sla + (agora - chamado.sla_pausado_em)
         chamado.sla_pausado_em = None
 
     chamado.status_id = novo_status_id
     if status_novo.finalizador:
         if novo_status_id == STATUS_RESOLVIDO_ID and chamado.resolvido_em is None:
             chamado.resolvido_em = agora
+            if latitude is not None and longitude is not None:
+                chamado.fechado_latitude = latitude
+                chamado.fechado_longitude = longitude
         if novo_status_id == STATUS_CANCELADO_ID and chamado.encerrado_em is None:
             chamado.encerrado_em = agora
 
@@ -330,6 +332,50 @@ async def excluir_chamado(db, chamado_id, usuario_codigo, usuario_nome) -> Chama
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
         campo_alterado="exclusao", valor_anterior=None, valor_novo="Chamado excluído",
+    ))
+    await db.commit()
+    db.expire_all()
+    return await obter_chamado(db, chamado_id)
+
+    async def listar_chamados_para_assumir(db) -> list[Chamado]:
+    """Chamados no status inicial 'Aberto', disponíveis para um técnico assumir."""
+    query = (
+        select(Chamado)
+        .where(Chamado.excluido.is_(False))
+        .where(Chamado.status_id == STATUS_INICIAL_ID)
+        .options(selectinload(Chamado.categorias), selectinload(Chamado.prioridade), selectinload(Chamado.status))
+        .order_by(Chamado.criado_em.asc())
+    )
+    result = await db.execute(query)
+    chamados = list(result.scalars().all())
+    for c in chamados:
+        await aplicar_status_sla(db, c)
+    return chamados
+
+
+async def assumir_chamado(db, chamado_id, usuario_codigo, usuario_nome) -> Chamado | None:
+    """Associa o chamado ao técnico e move de 'Aberto' para 'Em andamento'."""
+    chamado = await obter_chamado(db, chamado_id)
+    if chamado is None:
+        return None
+    if chamado.status_id != STATUS_INICIAL_ID:
+        return chamado  # já foi assumido/alterado por outra pessoa nesse meio tempo
+
+    responsavel_anterior = chamado.responsavel_nome_snapshot or "Não atribuído"
+    status_anterior = await db.get(Status, chamado.status_id)
+    status_novo = await db.get(Status, STATUS_EM_ANDAMENTO_ID)
+
+    chamado.responsavel_codigo = usuario_codigo
+    chamado.responsavel_nome_snapshot = usuario_nome
+    chamado.status_id = STATUS_EM_ANDAMENTO_ID
+
+    db.add(ChamadoHistorico(
+        chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
+        campo_alterado="responsavel", valor_anterior=responsavel_anterior, valor_novo=usuario_nome,
+    ))
+    db.add(ChamadoHistorico(
+        chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
+        campo_alterado="status", valor_anterior=status_anterior.nome, valor_novo=status_novo.nome,
     ))
     await db.commit()
     db.expire_all()

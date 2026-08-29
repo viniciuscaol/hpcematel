@@ -1,8 +1,38 @@
-<form hx-post="/chamados/{{ chamado.id }}/status" hx-target="#status-area" hx-swap="innerHTML" class="status-form">
-  <select name="status_id" onchange="this.form.requestSubmit()">
+<form hx-post="/chamados/{{ chamado.id }}/status" class="status-form" id="status-form">
+  <select name="status_id" id="status-select">
     {% for status in status_list %}
     <option value="{{ status.id }}" {% if status.id == chamado.status_id %}selected{% endif %}>{{ status.nome }}</option>
     {% endfor %}
   </select>
+  <input type="hidden" name="latitude" id="status-latitude">
+  <input type="hidden" name="longitude" id="status-longitude">
   <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
 </form>
+<script>
+(function () {
+  var select = document.getElementById('status-select');
+  var form = document.getElementById('status-form');
+  var latInput = document.getElementById('status-latitude');
+  var lonInput = document.getElementById('status-longitude');
+  var STATUS_RESOLVIDO_ID = {{ status_resolvido_id }};
+
+  select.addEventListener('change', function () {
+    var novoId = parseInt(select.value, 10);
+    if (novoId === STATUS_RESOLVIDO_ID && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          latInput.value = pos.coords.latitude;
+          lonInput.value = pos.coords.longitude;
+          form.requestSubmit();
+        },
+        function () {
+          form.requestSubmit(); // negou ou falhou o GPS: resolve mesmo assim, sem localização
+        },
+        { timeout: 6000 }
+      );
+    } else {
+      form.requestSubmit();
+    }
+  });
+})();
+</script>
