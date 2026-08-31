@@ -44,6 +44,7 @@ from app.services.chamado_service import (
     listar_responsaveis_possiveis,
     listar_status_ativos,
     obter_chamado,
+    salvar_rastreios,
 )
 from app.templates_config import templates
 from app.utils.datas import hoje_local
@@ -184,6 +185,8 @@ async def processar_novo_chamado(
     categoria_ids: list[int] = Form(...),
     prioridade_id: int = Form(...),
     responsavel_codigo: int = Form(...),
+    codigo_rastreio_envio: str = Form(""),
+    codigo_rastreio_reverso: str = Form(""),
 ):
     responsaveis = await listar_responsaveis_possiveis()
     encontrado = next((r for r in responsaveis if r["codigo"] == responsavel_codigo), None)
@@ -204,6 +207,8 @@ async def processar_novo_chamado(
         )
 
     chamado = await obter_chamado(db, chamado.id)
+
+    await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, codigo_rastreio_reverso)
 
     await notificar_novo_chamado(
         chamado_id=chamado.id,
@@ -387,4 +392,15 @@ async def assumir(
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     await assumir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
+    return _redirect_para_chamado(chamado_id)
+
+@router.post("/{chamado_id}/rastreio")
+async def salvar_rastreio_rota(
+    chamado_id: int,
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_helpdesk_db),
+    codigo_rastreio_envio: str = Form(""),
+    codigo_rastreio_reverso: str = Form(""),
+):
+    await salvar_rastreios(db, chamado_id, codigo_rastreio_envio, codigo_rastreio_reverso)
     return _redirect_para_chamado(chamado_id)

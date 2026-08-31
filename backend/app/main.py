@@ -17,6 +17,7 @@ from app.routers import admin, auth, chamados, clientes, pages
 from app.routers.auth import limiter
 from app.services.sla_monitor_service import verificar_sla_e_notificar
 from app.templates_config import templates
+from app.services.rastreio_monitor_service import verificar_rastreios_e_notificar
 
 scheduler = AsyncIOScheduler()
 
@@ -24,6 +25,7 @@ scheduler = AsyncIOScheduler()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_legacy_pool()
+    scheduler.add_job(verificar_rastreios_e_notificar, "interval", minutes=60, id="verificar_rastreios")
     scheduler.add_job(verificar_sla_e_notificar, "interval", minutes=15, id="verificar_sla")
     scheduler.start()
     yield

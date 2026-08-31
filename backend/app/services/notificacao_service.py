@@ -133,3 +133,18 @@ async def notificar_atribuicao_individual(
             resposta.raise_for_status()
     except Exception:
         logger.exception("Falha ao enviar notificação individual para %s", whatsapp_numero)
+
+async def notificar_atualizacao_rastreio(
+    chamado_id: int, cliente_nome: str, titulo: str, numero_chamado: str,
+    tipo: str, codigo_rastreio: str, descricao_evento: str,
+) -> None:
+    rotulo_tipo = "Envio" if tipo == "envio" else "Reverso (devolução)"
+    mensagem = (
+        f"📦 *Atualização de rastreio* ({rotulo_tipo})\n"
+        f"{cliente_nome} — {titulo}\n\n"
+        f"Nº chamado: {numero_chamado}\n"
+        f"Código: {codigo_rastreio}\n"
+        f"Status: {descricao_evento}\n\n"
+        f"🔗 {_link(chamado_id)}"
+    )
+    await _enviar(mensagem)

@@ -96,6 +96,19 @@
         <h2>Descrição</h2>
         <p class="chamado-descricao">{{ chamado.descricao or "Sem descrição." }}</p>
 
+        {% if chamado.rastreios %}
+        <h2>Rastreio Correios</h2>
+        <ul class="rastreio-lista">
+          {% for r in chamado.rastreios %}
+          <li>
+            <strong>{{ "Envio" if r.tipo == "envio" else "Reverso" }}:</strong> {{ r.codigo_rastreio }}
+            — {{ r.status_atual or "Aguardando primeira consulta" }}
+            {% if r.entregue %}<span class="badge-sla badge-sla-ok">Entregue</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
         <h2>Anexos</h2>
         {% if erro_anexo %}<p class="error-message">{{ erro_anexo }}</p>{% endif %}
         {% if chamado.anexos %}
