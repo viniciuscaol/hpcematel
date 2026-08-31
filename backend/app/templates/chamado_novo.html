@@ -29,11 +29,18 @@
       <label>Categorias</label>
       <div class="categoria-pills">
         {% for categoria in categorias %}
-        <label class="categoria-pill">
-          <input type="checkbox" name="categoria_ids" value="{{ categoria.id }}">
+        <label class="categoria-pill" data-nome="{{ categoria.nome | lower }}">
+          <input type="checkbox" name="categoria_ids" value="{{ categoria.id }}" class="categoria-checkbox">
           <span>{{ categoria.nome }}</span>
         </label>
         {% endfor %}
+      </div>
+
+      <div id="rastreio-correios" style="display:none;">
+        <label for="codigo_rastreio_envio">Código de rastreio (envio)</label>
+        <input type="text" id="codigo_rastreio_envio" name="codigo_rastreio_envio" placeholder="Opcional">
+        <label for="codigo_rastreio_reverso">Código de rastreio (reverso)</label>
+        <input type="text" id="codigo_rastreio_reverso" name="codigo_rastreio_reverso" placeholder="Opcional">
       </div>
 
       <label for="prioridade_id">Prioridade</label>
@@ -56,4 +63,17 @@
     </form>
   </main>
 </div>
+<script>
+(function () {
+  var rastreioDiv = document.getElementById('rastreio-correios');
+  var checkboxes = document.querySelectorAll('.categoria-checkbox');
+  function atualizar() {
+    var marcadoCorreios = Array.from(checkboxes).some(function (cb) {
+      return cb.checked && cb.closest('.categoria-pill').dataset.nome === 'correios';
+    });
+    rastreioDiv.style.display = marcadoCorreios ? 'block' : 'none';
+  }
+  checkboxes.forEach(function (cb) { cb.addEventListener('change', atualizar); });
+})();
+</script>
 {% endblock %}

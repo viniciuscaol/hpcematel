@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     waha_sessao: str = "default"
     waha_grupo_id: str = ""
 
+    # Correios (rastreio de envio/reverso) — vazio = recurso desligado
+    correios_base_url: str = "https://api.correios.com.br"
+    correios_usuario: str = ""
+    correios_senha: str = ""
+    correios_cartao_postagem: str = ""
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property

@@ -80,6 +80,8 @@ class Chamado(Base):
     criado_por_codigo: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     criado_por_nome_snapshot: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    rastreios: Mapped[list["ChamadoRastreio"]] = relationship(cascade="all, delete-orphan")
+
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -201,3 +203,20 @@ class UsuarioContato(Base):
     atualizado_em: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+class ChamadoRastreio(Base):
+    """
+    Código de rastreio dos Correios vinculado a um chamado — um chamado
+    pode ter até dois códigos: um de envio (agência parceira envia pro
+    colaborador) e um reverso (colaborador devolve equipamento).
+    """
+    __tablename__ = "chamado_rastreio"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    chamado_id: Mapped[int] = mapped_column(ForeignKey("chamado.id", ondelete="CASCADE"), nullable=False, index=True)
+    tipo: Mapped[str] = mapped_column(String(10), nullable=False)  # "envio" ou "reverso"
+    codigo_rastreio: Mapped[str] = mapped_column(String(20), nullable=False)
+    status_atual: Mapped[str | None] = mapped_column(Text)
+    entregue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    ultima_verificacao_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
