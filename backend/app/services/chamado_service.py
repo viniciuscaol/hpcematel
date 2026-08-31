@@ -159,6 +159,7 @@ async def obter_chamado(db: AsyncSession, chamado_id: int) -> Chamado | None:
         .options(
             selectinload(Chamado.categorias), selectinload(Chamado.prioridade), selectinload(Chamado.status),
             selectinload(Chamado.historico), selectinload(Chamado.interacoes), selectinload(Chamado.anexos),
+            selectinload(Chamado.rastreios),
         )
     )
     result = await db.execute(query)
