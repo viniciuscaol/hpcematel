@@ -393,7 +393,7 @@ async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo
 
     algum_codigo_novo = False
     for tipo, codigo in (("envio", codigo_envio), ("reverso", codigo_reverso)):
-        codigo = (codigo or "").strip().upper()
+        codigo = "".join((codigo or "").split()).upper()
         if not codigo:
             continue
         algum_codigo_novo = True
