@@ -20,6 +20,7 @@ STATUS_EM_ANDAMENTO_ID = 2
 STATUS_AGUARDANDO_ID = 3
 STATUS_RESOLVIDO_ID = 4
 STATUS_CANCELADO_ID = 5
+STATUS_AGUARDANDO_CORREIOS_ID = 6
 
 POR_PAGINA_PADRAO = 20
 
@@ -387,14 +388,15 @@ from app.services.correios_service import consultar_rastreio
 
 
 async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo_reverso: str | None) -> None:
-    """Cria/atualiza os códigos de rastreio informados no formulário do chamado."""
     result = await db.execute(select(ChamadoRastreio).where(ChamadoRastreio.chamado_id == chamado_id))
     existentes = {r.tipo: r for r in result.scalars().all()}
 
+    algum_codigo_novo = False
     for tipo, codigo in (("envio", codigo_envio), ("reverso", codigo_reverso)):
         codigo = (codigo or "").strip().upper()
         if not codigo:
             continue
+        algum_codigo_novo = True
         if tipo in existentes:
             if existentes[tipo].codigo_rastreio != codigo:
                 existentes[tipo].codigo_rastreio = codigo
@@ -403,10 +405,12 @@ async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo
         else:
             db.add(ChamadoRastreio(chamado_id=chamado_id, tipo=tipo, codigo_rastreio=codigo))
 
-    # Se algum código foi cadastrado, pausa o SLA reaproveitando "Aguardando cliente"
-    if codigo_envio or codigo_reverso:
+    if algum_codigo_novo:
         chamado = await obter_chamado(db, chamado_id)
         if chamado is not None and not chamado.status.finalizador and not chamado.status.pausa_sla:
-            await atualizar_status(db, chamado_id, STATUS_AGUARDANDO_ID, chamado.criado_por_codigo, chamado.criado_por_nome_snapshot)
+            await atualizar_status(
+                db, chamado_id, STATUS_AGUARDANDO_CORREIOS_ID,
+                chamado.criado_por_codigo, chamado.criado_por_nome_snapshot,
+            )
 
     await db.commit()
