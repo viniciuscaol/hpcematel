@@ -186,7 +186,6 @@ async def processar_novo_chamado(
     prioridade_id: int = Form(...),
     responsavel_codigo: int = Form(...),
     codigo_rastreio_envio: str = Form(""),
-    codigo_rastreio_reverso: str = Form(""),
 ):
     responsaveis = await listar_responsaveis_possiveis()
     encontrado = next((r for r in responsaveis if r["codigo"] == responsavel_codigo), None)
@@ -208,7 +207,7 @@ async def processar_novo_chamado(
 
     chamado = await obter_chamado(db, chamado.id)
 
-    await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, codigo_rastreio_reverso)
+    await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, None)
 
     await notificar_novo_chamado(
         chamado_id=chamado.id,
@@ -272,12 +271,12 @@ async def alterar_status(
 @router.post("/{chamado_id}/categoria")
 async def alterar_categorias(
     chamado_id: int,
-    usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
+    db: AsyncSession = Depends(get_helpdesk_db),
     categoria_ids: list[int] = Form(...),
-
 ):
     await atualizar_categorias(db, chamado_id, categoria_ids, usuario["codigo"], usuario["nome"])
-    return _redirect_para_chamado(chamado_id)
+    return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
 
 
 @router.post("/{chamado_id}/prioridade")
@@ -400,7 +399,6 @@ async def salvar_rastreio_rota(
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_helpdesk_db),
     codigo_rastreio_envio: str = Form(""),
-    codigo_rastreio_reverso: str = Form(""),
 ):
-    await salvar_rastreios(db, chamado_id, codigo_rastreio_envio, codigo_rastreio_reverso)
+    await salvar_rastreios(db, chamado_id, codigo_rastreio_envio, None)
     return _redirect_para_chamado(chamado_id)

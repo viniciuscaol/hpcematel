@@ -96,17 +96,27 @@
         <h2>Descrição</h2>
         <p class="chamado-descricao">{{ chamado.descricao or "Sem descrição." }}</p>
 
-        {% if chamado.rastreios %}
+        {% set tem_correios = chamado.categorias | map(attribute='nome') | map('lower') | select('equalto', 'correios') | list %}
+        {% if tem_correios %}
         <h2>Rastreio Correios</h2>
+        {% if chamado.rastreios %}
         <ul class="rastreio-lista">
           {% for r in chamado.rastreios %}
           <li>
-            <strong>{{ "Envio" if r.tipo == "envio" else "Reverso" }}:</strong> {{ r.codigo_rastreio }}
-            — {{ r.status_atual or "Aguardando primeira consulta" }}
+            <strong>{{ r.codigo_rastreio }}</strong> — {{ r.status_atual or "Aguardando primeira consulta" }}
             {% if r.entregue %}<span class="badge-sla badge-sla-ok">Entregue</span>{% endif %}
           </li>
           {% endfor %}
         </ul>
+        {% endif %}
+        {% if not chamado.excluido %}
+        <form method="post" action="/chamados/{{ chamado.id }}/rastreio" class="chamado-form" style="max-width: 320px;">
+          <label for="codigo_rastreio_envio">Código de rastreio</label>
+          <input type="text" id="codigo_rastreio_envio" name="codigo_rastreio_envio" placeholder="Ex: AA123456789BR"
+                 value="{{ chamado.rastreios | selectattr('tipo', 'equalto', 'envio') | map(attribute='codigo_rastreio') | first | default('') }}">
+          <button type="submit">Salvar rastreio</button>
+        </form>
+        {% endif %}
         {% endif %}
 
         <h2>Anexos</h2>
