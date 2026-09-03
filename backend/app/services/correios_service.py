@@ -39,7 +39,7 @@ async def consultar_rastreio(codigo_objeto: str) -> dict | None:
     if not dados.get("success"):
         return None
 
-    evento = (dados.get("data") or {}).get("eventoMaisRecente") or {}
+    evento = dados.get("eventoMaisRecente") or {}
     descricao = evento.get("descricao") or evento.get("status") or "Status não informado"
     entregue = "entregue" in descricao.lower()
 
