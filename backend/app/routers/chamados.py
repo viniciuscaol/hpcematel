@@ -277,10 +277,10 @@ async def alterar_categorias(
     chamado_id: int,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
-    categoria_ids: list[int] = Form(...),
+    categoria_ids: list[int] = Form(default=[]),
 ):
     await atualizar_categorias(db, chamado_id, categoria_ids, usuario["codigo"], usuario["nome"])
-    return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
+    return _redirect_para_chamado(chamado_id)
 
 
 @router.post("/{chamado_id}/prioridade")
