@@ -30,16 +30,7 @@
 
         <div class="campo-linha">
           <strong>Categorias:</strong>
-          {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
-          <form hx-post="/chamados/{{ chamado.id }}/categoria" class="campo-editavel">
-            <select name="categoria_ids" multiple onchange="this.form.requestSubmit()">
-              {% for categoria in categorias %}
-              <option value="{{ categoria.id }}" {% if categoria.id in ids_atuais %}selected{% endif %}>
-                {{ categoria.nome }}
-              </option>
-              {% endfor %}
-            </select>
-          </form>
+          {% include "partials/chamado_categoria_area.html" %}
         </div>
 
         <div class="campo-linha">
