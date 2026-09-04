@@ -210,6 +210,7 @@ async def processar_novo_chamado(
     await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, None)
 
     await notificar_novo_chamado(
+        db,
         chamado_id=chamado.id,
         cliente_nome=chamado.cliente_nome_snapshot,
         titulo=chamado.titulo,
@@ -222,6 +223,7 @@ async def processar_novo_chamado(
     numero = await buscar_numero_whatsapp(db, responsavel_codigo)
     if numero:
         await notificar_atribuicao_individual(
+            db,
             whatsapp_numero=numero, responsavel_nome=chamado.responsavel_nome_snapshot,
             chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
             titulo=chamado.titulo, numero_chamado=chamado.numero_chamado,
@@ -262,6 +264,7 @@ async def alterar_status(
 
     if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
+            db,
             chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
             titulo=chamado.titulo, numero_chamado=chamado.numero_chamado, status_nome=chamado.status.nome,
         )
@@ -301,6 +304,7 @@ async def alterar_responsavel(
         numero = await buscar_numero_whatsapp(db, responsavel_codigo)
         if numero:
             await notificar_atribuicao_individual(
+                db,
                 whatsapp_numero=numero, responsavel_nome=chamado.responsavel_nome_snapshot,
                 chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
                 titulo=chamado.titulo, numero_chamado=chamado.numero_chamado,

@@ -36,7 +36,7 @@ async def verificar_sla_e_notificar() -> None:
 
             try:
                 await notificar_alerta_sla(
-                    chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
+                    db, chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
                     titulo=chamado.titulo, numero_chamado=chamado.numero_chamado,
                     sla_status=chamado.sla_status, responsavel_nome=chamado.responsavel_nome_snapshot,
                 )

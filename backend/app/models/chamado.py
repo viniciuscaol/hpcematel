@@ -220,3 +220,13 @@ class ChamadoRastreio(Base):
     entregue: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     ultima_verificacao_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    class NotificacaoPendente(Base):
+    """Mensagens de WhatsApp que caíram fora do horário permitido (8h-19h)
+    e ficam guardadas aqui até o próximo horário válido."""
+    __tablename__ = "notificacao_pendente"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    chat_id: Mapped[str] = mapped_column(String(50), nullable=False)
+    mensagem: Mapped[str] = mapped_column(Text, nullable=False)
+    criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
