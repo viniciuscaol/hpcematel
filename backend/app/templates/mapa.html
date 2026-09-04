@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Mapa de Atendimentos - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <h1>Mapa de Atendimentos Resolvidos</h1>
+
+    <form method="get" action="/mapa">
+      <div class="filtro-area">
+        <label for="data_inicio">De:</label>
+        <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}">
+        <label for="data_fim">Até:</label>
+        <input type="date" id="data_fim" name="data_fim" value="{{ data_fim }}">
+        <button type="submit" class="button-link">Filtrar</button>
+      </div>
+
+      <div class="categoria-pills" style="margin: 0.75rem 0;">
+        {% for r in todos_responsaveis %}
+        <label class="categoria-pill {% if r.codigo in usuarios_selecionados %}categoria-pill-marcada{% endif %}">
+          <input type="checkbox" name="usuarios_codigos" value="{{ r.codigo }}" {% if r.codigo in usuarios_selecionados %}checked{% endif %}>
+          <span>{{ r.nome }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </form>
+
+    {% if legenda %}
+    <div class="mapa-legenda">
+      {% for item in legenda %}
+      <span class="mapa-legenda-item"><span class="mapa-legenda-cor" style="background: {{ item.cor }}"></span>{{ item.nome }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if sem_local > 0 %}
+    <p class="sem-resultado">{{ sem_local }} chamado{{ "s" if sem_local != 1 else "" }} resolvido{{ "s" if sem_local != 1 else "" }} nesse período sem localização registrada.</p>
+    {% endif %}
+
+    <div id="mapa-chamados" style="height: 420px; border-radius: 12px; margin: 1rem 0; background: #e5e7eb;"></div>
+
+    {% if chamados %}
+    <table class="chamados-tabela chamados-tabela-responsiva">
+      <thead>
+        <tr><th>Nº Chamado</th><th>Título</th><th>Cliente</th><th>Responsável</th><th>Resolvido em</th></tr>
+      </thead>
+      <tbody>
+        {% for c in chamados %}
+        <tr onclick="window.location='/chamados/{{ c.id }}'">
+          <td data-label="Nº Chamado" class="numero-chamado">{{ c.numero_chamado }}</td>
+          <td data-label="Título">{{ c.titulo }}</td>
+          <td data-label="Cliente">{{ c.cliente_nome_snapshot }}</td>
+          <td data-label="Responsável">{{ c.responsavel_nome_snapshot or "Não atribuído" }}</td>
+          <td data-label="Resolvido em">{{ c.resolvido_em | data_br }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="sem-resultado">Nenhum chamado resolvido com localização nesse período.</p>
+    {% endif %}
+  </main>
+</div>
+
+<link rel="stylesheet" href="/static/vendor/leaflet/leaflet.css">
+<script src="/static/vendor/leaflet/leaflet.js"></script>
+<script>
+(function () {
+  var pontos = {{ pontos | tojson }};
+  if (!pontos.length) return;
+
+  var mapa = L.map('mapa-chamados');
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+  }).addTo(mapa);
+
+  var grupo = L.featureGroup();
+  pontos.forEach(function (p) {
+    var icone = L.divIcon({
+      className: '',
+      html: '<div style="width:16px;height:16px;border-radius:50%;background:' + p.cor + ';border:2px solid white;box-shadow:0 0 3px rgba(0,0,0,0.5);"></div>',
+      iconSize: [16, 16],
+    });
+    L.marker([p.lat, p.lon], { icon: icone })
+      .bindPopup('<strong>' + p.numero + '</strong><br>' + p.titulo + '<br>' + p.cliente + '<br>Responsável: ' + p.responsavel)
+      .addTo(grupo);
+  });
+  grupo.addTo(mapa);
+  mapa.fitBounds(grupo.getBounds(), { padding: [30, 30] });
+})();
+</script>
+{% endblock %}

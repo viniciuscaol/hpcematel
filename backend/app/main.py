@@ -13,7 +13,7 @@ from slowapi.errors import RateLimitExceeded
 from app.auth.dependencies import NaoAutenticado
 from app.config import settings
 from app.database.legacy_db import init_legacy_pool, close_legacy_pool
-from app.routers import admin, auth, chamados, clientes, pages
+from app.routers import admin, auth, chamados, clientes, mapa, pages
 from app.routers.auth import limiter
 from app.services.sla_monitor_service import verificar_sla_e_notificar
 from app.services.notificacao_service import processar_fila_notificacoes
@@ -69,7 +69,7 @@ app.include_router(auth.router)
 app.include_router(clientes.router)
 app.include_router(chamados.router)
 app.include_router(admin.router)
-
+app.include_router(mapa.router)
 
 @app.get("/health")
 async def health():
