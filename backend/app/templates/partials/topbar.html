@@ -11,6 +11,7 @@
     <a href="/chamados/novo">Novo Chamado</a>
     {% if usuario.papel == 'ADMIN' %}
     <a href="/admin">Administração</a>
+    <a href="/mapa">Mapa</a>
     {% endif %}
     {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
     <a href="/tecnico">Técnico</a>
