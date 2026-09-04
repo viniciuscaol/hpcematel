@@ -15,18 +15,7 @@
 
     <div class="chamado-header">
       <h1>{{ chamado.numero_chamado }} - {{ chamado.titulo }}</h1>
-      {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
-      <form hx-post="/chamados/{{ chamado.id }}/status" class="status-form">
-        <select name="status_id" onchange="this.form.requestSubmit()">
-          {% for status in status_list %}
-          <option value="{{ status.id }}" {% if status.id == chamado.status_id %}selected{% endif %}>{{ status.nome }}</option>
-          {% endfor %}
-        </select>
-        <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
-      </form>
-      {% else %}
-      <span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span>
-      {% endif %}
+      {% include "partials/chamado_status_area.html" %}
     </div>
 
     <div class="chamado-grid">

@@ -7,8 +7,60 @@
   <link rel="stylesheet" href="/static/css/style.css">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <script src="/static/js/htmx.min.js"></script>
+  <style>
+    html.pagina-carregando, html.pagina-carregando * {
+      cursor: progress !important;
+    }
+    #indicador-carregando {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 9999;
+      width: 22px;
+      height: 22px;
+      border: 3px solid rgba(44, 62, 140, 0.2);
+      border-top-color: var(--color-primary, #2C3E8C);
+      border-radius: 50%;
+      display: none;
+      animation: girar-indicador 0.6s linear infinite;
+    }
+    html.pagina-carregando #indicador-carregando {
+      display: block;
+    }
+    @keyframes girar-indicador {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <div id="indicador-carregando"></div>
   {% block content %}{% endblock %}
+  <script>
+  (function () {
+    var html = document.documentElement;
+    function mostrar() { html.classList.add('pagina-carregando'); }
+    function esconder() { html.classList.remove('pagina-carregando'); }
+
+    // Navegação normal (links <a> e formulários sem HTMX)
+    document.addEventListener('click', function (e) {
+      var link = e.target.closest('a[href]');
+      if (link && !link.hasAttribute('hx-get') && !link.hasAttribute('hx-post')
+          && link.target !== '_blank' && !e.ctrlKey && !e.metaKey) {
+        mostrar();
+      }
+    });
+    document.addEventListener('submit', function (e) {
+      var form = e.target;
+      if (!form.hasAttribute('hx-post') && !form.hasAttribute('hx-get')) {
+        mostrar();
+      }
+    });
+
+    // Requisições feitas via HTMX
+    document.body.addEventListener('htmx:beforeRequest', mostrar);
+    document.body.addEventListener('htmx:afterSettle', esconder);
+    document.body.addEventListener('htmx:responseError', esconder);
+  })();
+  </script>
 </body>
 </html>
