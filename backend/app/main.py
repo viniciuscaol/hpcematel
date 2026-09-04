@@ -33,7 +33,7 @@ async def lifespan(app: FastAPI):
     await init_legacy_pool()
     scheduler.add_job(verificar_rastreios_e_notificar, "interval", minutes=60, id="verificar_rastreios")
     scheduler.add_job(verificar_sla_e_notificar, "interval", minutes=15, id="verificar_sla")
-        scheduler.add_job(_verificar_fila_notificacoes, "interval", minutes=15, id="fila_notificacoes")
+    scheduler.add_job(_verificar_fila_notificacoes, "interval", minutes=15, id="fila_notificacoes")
     scheduler.start()
     yield
     scheduler.shutdown()
