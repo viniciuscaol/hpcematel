@@ -16,10 +16,16 @@ from app.database.legacy_db import init_legacy_pool, close_legacy_pool
 from app.routers import admin, auth, chamados, clientes, pages
 from app.routers.auth import limiter
 from app.services.sla_monitor_service import verificar_sla_e_notificar
+from app.services.notificacao_service import processar_fila_notificacoes
 from app.templates_config import templates
 from app.services.rastreio_monitor_service import verificar_rastreios_e_notificar
 
 scheduler = AsyncIOScheduler()
+
+async def _verificar_fila_notificacoes():
+    from app.database.helpdesk_db import HelpdeskSessionLocal
+    async with HelpdeskSessionLocal() as db:
+        await processar_fila_notificacoes(db)
 
 
 @asynccontextmanager
@@ -27,6 +33,7 @@ async def lifespan(app: FastAPI):
     await init_legacy_pool()
     scheduler.add_job(verificar_rastreios_e_notificar, "interval", minutes=60, id="verificar_rastreios")
     scheduler.add_job(verificar_sla_e_notificar, "interval", minutes=15, id="verificar_sla")
+        scheduler.add_job(_verificar_fila_notificacoes, "interval", minutes=15, id="fila_notificacoes")
     scheduler.start()
     yield
     scheduler.shutdown()

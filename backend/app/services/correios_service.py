@@ -1,7 +1,5 @@
 """
-Integração com a API pública do Seu Rastreio (seurastreio.com.br) —
-serviço gratuito de rastreio, sem precisar de contrato próprio com os
-Correios. Basta o código de rastreio informado pela agência parceira.
+Integração com a API pública do Seu Rastreio (seurastreio.com.br).
 """
 import logging
 
@@ -16,10 +14,32 @@ def correios_configurado() -> bool:
     return bool(settings.seurastreio_api_key)
 
 
+def _extrair_cidades(dados: dict) -> tuple[str | None, str | None]:
+    """
+    Tenta achar origem/destino em alguns formatos possíveis da resposta.
+    Se não encontrar nada reconhecível, retorna (None, None) sem quebrar —
+    nesse caso a notificação simplesmente não mostra essas linhas.
+    """
+    origem = dados.get("origem") or dados.get("cidadeOrigem") or dados.get("remetente")
+    destino = dados.get("destino") or dados.get("cidadeDestino") or dados.get("destinatario")
+
+    if not origem and not destino:
+        localizacao = dados.get("localizacao")
+        if isinstance(localizacao, str) and "→" in localizacao:
+            partes = [p.strip() for p in localizacao.split("→")]
+            if len(partes) == 2:
+                origem, destino = partes
+        elif isinstance(localizacao, dict):
+            origem = origem or localizacao.get("origem")
+            destino = destino or localizacao.get("destino")
+
+    return origem, destino
+
+
 async def consultar_rastreio(codigo_objeto: str) -> dict | None:
     """
-    Retorna {"descricao_evento": str, "entregue": bool} com base no
-    evento mais recente do objeto, ou None se não foi possível consultar.
+    Retorna {"descricao_evento", "entregue", "cidade_remetente", "cidade_destinatario"}
+    ou None se não foi possível consultar.
     """
     if not correios_configurado():
         return None
@@ -36,11 +56,15 @@ async def consultar_rastreio(codigo_objeto: str) -> dict | None:
         logger.exception("Falha ao consultar rastreio do objeto %s", codigo_objeto)
         return None
 
-    if not dados.get("success"):
-        return None
-
     evento = dados.get("eventoMaisRecente") or {}
-    descricao = evento.get("descricao") or evento.get("status") or "Status não informado"
+    descricao = evento.get("descricao") or evento.get("status") or dados.get("status") or "Status não informado"
     entregue = "entregue" in descricao.lower()
 
-    return {"descricao_evento": descricao, "entregue": entregue}
+    cidade_remetente, cidade_destinatario = _extrair_cidades(dados)
+
+    return {
+        "descricao_evento": descricao,
+        "entregue": entregue,
+        "cidade_remetente": cidade_remetente,
+        "cidade_destinatario": cidade_destinatario,
+    }
