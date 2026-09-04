@@ -255,7 +255,8 @@ async def tela_detalhe_chamado(
 @router.post("/{chamado_id}/status")
 async def alterar_status(
     chamado_id: int,
-    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
+    usuario: dict = Depends(get_current_user),#(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
+    db: AsyncSession = Depends(get_helpdesk_db),
     status_id: int = Form(...),
     latitude: float | None = Form(None),
     longitude: float | None = Form(None),
