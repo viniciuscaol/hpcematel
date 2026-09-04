@@ -38,9 +38,26 @@ async def tela_mapa(
     data_inicio_obj = date.fromisoformat(data_inicio) if data_inicio else hoje
     data_fim_obj = date.fromisoformat(data_fim) if data_fim else hoje
 
-    chamados = await listar_chamados_resolvidos_com_local(db, data_inicio_obj, data_fim_obj, usuarios_codigos)
+    # Primeiro busca TODOS os chamados do período (sem filtro de usuário),
+    # só pra saber quem de fato resolveu algo — isso monta as opções do filtro.
+    todos_do_periodo = await listar_chamados_resolvidos_com_local(db, data_inicio_obj, data_fim_obj, None)
+    responsaveis_com_registro = {}
+    for c in todos_do_periodo:
+        if c.responsavel_codigo:
+            responsaveis_com_registro[c.responsavel_codigo] = c.responsavel_nome_snapshot
+
+    opcoes_filtro = [
+        {"codigo": codigo, "nome": nome}
+        for codigo, nome in sorted(responsaveis_com_registro.items(), key=lambda item: item[1])
+    ]
+
+    # Agora aplica o filtro de usuário escolhido (se houver) pra decidir o que mostrar de fato.
+    chamados = (
+        [c for c in todos_do_periodo if c.responsavel_codigo in usuarios_codigos]
+        if usuarios_codigos else todos_do_periodo
+    )
+
     sem_local = await contar_resolvidos_sem_local(db, data_inicio_obj, data_fim_obj)
-    todos_responsaveis = await listar_responsaveis_possiveis()
 
     codigos_presentes = sorted({c.responsavel_codigo for c in chamados if c.responsavel_codigo})
     cor_por_codigo = {codigo: PALETA_CORES[i % len(PALETA_CORES)] for i, codigo in enumerate(codigos_presentes)}
@@ -62,7 +79,7 @@ async def tela_mapa(
     return templates.TemplateResponse("mapa.html", {
         "request": request, "usuario": usuario, "chamados": chamados,
         "pontos": pontos, "legenda": legenda, "sem_local": sem_local,
-        "todos_responsaveis": todos_responsaveis,
+        "todos_responsaveis": opcoes_filtro,
         "usuarios_selecionados": usuarios_codigos or [],
         "data_inicio": data_inicio_obj.isoformat(), "data_fim": data_fim_obj.isoformat(),
     })
