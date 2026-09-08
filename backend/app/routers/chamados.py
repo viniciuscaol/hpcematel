@@ -255,23 +255,12 @@ async def tela_detalhe_chamado(
 @router.post("/{chamado_id}/status")
 async def alterar_status(
     chamado_id: int,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(get_current_user),#(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     db: AsyncSession = Depends(get_helpdesk_db),
     status_id: int = Form(...),
-    latitude: str | None = Form(None),
-    longitude: str | None = Form(None),
+    latitude: float | None = Form(None),
+    longitude: float | None = Form(None),
 ):
-    def _para_float_ou_none(valor: str | None) -> float | None:
-        if not valor:
-            return None
-        try:
-            return float(valor)
-        except ValueError:
-            return None
-
-    latitude_num = _para_float_ou_none(latitude)
-    longitude_num = _para_float_ou_none(longitude)
-    
     chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude, longitude)
 
     if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
