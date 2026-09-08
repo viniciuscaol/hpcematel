@@ -6,7 +6,7 @@
   <main class="content">
     <h1>Mapa de Atendimentos Resolvidos</h1>
 
-    <form method="get" action="/mapa">
+    <form method="get" action="/mapa" id="mapa-filtro-form">
       <div class="filtro-area">
         <label for="data_inicio">De:</label>
         <input type="date" id="data_inicio" name="data_inicio" value="{{ data_inicio }}">
@@ -18,10 +18,15 @@
       <div class="categoria-pills" style="margin: 0.75rem 0;">
         {% for r in todos_responsaveis %}
         <label class="categoria-pill {% if r.codigo in usuarios_selecionados %}categoria-pill-marcada{% endif %}">
-          <input type="checkbox" name="usuarios_codigos" value="{{ r.codigo }}" {% if r.codigo in usuarios_selecionados %}checked{% endif %}>
+          <input type="checkbox" name="usuarios_codigos" value="{{ r.codigo }}"
+                 {% if r.codigo in usuarios_selecionados %}checked{% endif %}
+                 onchange="document.getElementById('mapa-filtro-form').requestSubmit()">
           <span>{{ r.nome }}</span>
         </label>
         {% endfor %}
+        {% if not todos_responsaveis %}
+        <span class="sem-resultado">Nenhum chamado resolvido nesse período ainda.</span>
+        {% endif %}
       </div>
     </form>
 
@@ -33,16 +38,17 @@
     </div>
     {% endif %}
 
-    {% if sem_local > 0 %}
-    <p class="sem-resultado">{{ sem_local }} chamado{{ "s" if sem_local != 1 else "" }} resolvido{{ "s" if sem_local != 1 else "" }} nesse período sem localização registrada.</p>
+    {% if sem_local_count > 0 %}
+    <p class="sem-resultado">{{ sem_local_count }} chamado{{ "s" if sem_local_count != 1 else "" }} resolvido{{ "s" if sem_local_count != 1 else "" }} nesse período sem localização registrada (listado{{ "s" if sem_local_count != 1 else "" }} abaixo, sem pino no mapa).</p>
     {% endif %}
 
     <div id="mapa-chamados" style="height: 420px; border-radius: 12px; margin: 1rem 0; background: #e5e7eb;"></div>
 
+    <h2>Relatório de atendimentos ({{ chamados | length }})</h2>
     {% if chamados %}
     <table class="chamados-tabela chamados-tabela-responsiva">
       <thead>
-        <tr><th>Nº Chamado</th><th>Título</th><th>Cliente</th><th>Responsável</th><th>Resolvido em</th></tr>
+        <tr><th>Nº Chamado</th><th>Título</th><th>Cliente</th><th>Responsável</th><th>Resolvido em</th><th>Localização</th></tr>
       </thead>
       <tbody>
         {% for c in chamados %}
@@ -52,12 +58,19 @@
           <td data-label="Cliente">{{ c.cliente_nome_snapshot }}</td>
           <td data-label="Responsável">{{ c.responsavel_nome_snapshot or "Não atribuído" }}</td>
           <td data-label="Resolvido em">{{ c.resolvido_em | data_br }}</td>
+          <td data-label="Localização">
+            {% if c.fechado_latitude and c.fechado_longitude %}
+              <span class="badge-sla badge-sla-ok">Registrada</span>
+            {% else %}
+              <span class="badge-sla badge-sla-neutro">Não registrada</span>
+            {% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
-    <p class="sem-resultado">Nenhum chamado resolvido com localização nesse período.</p>
+    <p class="sem-resultado">Nenhum chamado resolvido nesse período.</p>
     {% endif %}
   </main>
 </div>
@@ -67,7 +80,11 @@
 <script>
 (function () {
   var pontos = {{ pontos | tojson }};
-  if (!pontos.length) return;
+  var mapaDiv = document.getElementById('mapa-chamados');
+  if (!pontos.length) {
+    mapaDiv.innerHTML = '<p style="padding:1rem;color:#6b7280;">Nenhum ponto com localização para exibir neste filtro.</p>';
+    return;
+  }
 
   var mapa = L.map('mapa-chamados');
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {

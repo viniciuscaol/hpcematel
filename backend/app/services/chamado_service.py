@@ -415,9 +415,12 @@ async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo
 
     await db.commit()
 
-async def listar_chamados_resolvidos_com_local(
+async def listar_chamados_resolvidos(
     db, data_inicio: date, data_fim: date, usuarios_codigos: list[int] | None = None,
 ) -> list[Chamado]:
+    """Todos os chamados resolvidos no período — com ou sem localização —
+    opcionalmente filtrados por responsável. Serve tanto pro mapa (só os
+    que têm coordenada) quanto pro relatório completo abaixo dele."""
     from app.utils.datas import intervalo_utc_do_dia
 
     inicio_utc, _ = intervalo_utc_do_dia(data_inicio)
@@ -425,8 +428,7 @@ async def listar_chamados_resolvidos_com_local(
 
     condicoes = [
         Chamado.excluido.is_(False),
-        Chamado.fechado_latitude.isnot(None),
-        Chamado.fechado_longitude.isnot(None),
+        Chamado.status_id == STATUS_RESOLVIDO_ID,
         Chamado.resolvido_em >= inicio_utc,
         Chamado.resolvido_em < fim_utc,
     ]
@@ -440,21 +442,3 @@ async def listar_chamados_resolvidos_com_local(
     )
     result = await db.execute(query)
     return list(result.scalars().all())
-
-
-async def contar_resolvidos_sem_local(db, data_inicio: date, data_fim: date) -> int:
-    from app.utils.datas import intervalo_utc_do_dia
-
-    inicio_utc, _ = intervalo_utc_do_dia(data_inicio)
-    _, fim_utc = intervalo_utc_do_dia(data_fim)
-
-    result = await db.execute(
-        select(func.count(Chamado.id)).where(
-            Chamado.excluido.is_(False),
-            Chamado.status_id == STATUS_RESOLVIDO_ID,
-            Chamado.fechado_latitude.is_(None),
-            Chamado.resolvido_em >= inicio_utc,
-            Chamado.resolvido_em < fim_utc,
-        )
-    )
-    return result.scalar_one()
