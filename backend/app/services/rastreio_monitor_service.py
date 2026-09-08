@@ -1,8 +1,11 @@
 """
 Verificação periódica dos rastreios de Correios. Notifica mudanças de
 status e, ao detectar entrega, resolve o chamado automaticamente.
+Cada chamado é processado isoladamente (try/except por item), para que
+uma falha num não impeça os demais de serem verificados no mesmo ciclo.
 """
 import logging
+from datetime import datetime, timezone
 
 from sqlalchemy import select
 
@@ -31,13 +34,14 @@ async def verificar_rastreios_e_notificar() -> None:
         )
         pares = result.all()
 
+        chamados_ids_com_mudanca: set[int] = set()
+
         for rastreio, chamado in pares:
             info = await consultar_rastreio(rastreio.codigo_rastreio)
             if info is None:
                 continue
 
-            mudou = info["descricao_evento"] != rastreio.status_atual
-            if mudou:
+            if info["descricao_evento"] != rastreio.status_atual:
                 try:
                     await notificar_atualizacao_rastreio(
                         db, chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
@@ -52,18 +56,32 @@ async def verificar_rastreios_e_notificar() -> None:
 
                 rastreio.status_atual = info["descricao_evento"]
                 rastreio.entregue = info["entregue"]
+                if info["entregue"] and rastreio.tipo == "envio":
+                    chamados_ids_com_mudanca.add(chamado.id)
 
-            from datetime import datetime, timezone
             rastreio.ultima_verificacao_em = datetime.now(timezone.utc)
 
         await db.commit()
 
-        # Auto-resolve: só quando TODOS os rastreios de envio do chamado
-        # estiverem entregues (evita resolver com reverso ainda em trânsito).
-        for rastreio, chamado in pares:
-            if rastreio.tipo != "envio" or not rastreio.entregue:
-                continue
-            todos_result = await db.execute(select(ChamadoRastreio).where(ChamadoRastreio.chamado_id == chamado.id))
-            todos = list(todos_result.scalars().all())
-            if all(r.entregue for r in todos) and chamado.status_id != STATUS_RESOLVIDO_ID:
-                await atualizar_status(db, chamado.id, STATUS_RESOLVIDO_ID, USUARIO_SISTEMA_CODIGO, USUARIO_SISTEMA_NOME)
+        # Auto-resolve: processado em transações isoladas, uma por chamado,
+        # para que um erro num não impeça a checagem dos demais.
+        for chamado_id in chamados_ids_com_mudanca:
+            try:
+                todos_result = await db.execute(
+                    select(ChamadoRastreio).where(ChamadoRastreio.chamado_id == chamado_id)
+                )
+                todos = list(todos_result.scalars().all())
+                if not all(r.entregue for r in todos):
+                    continue
+
+                status_atual = await db.execute(select(Chamado.status_id).where(Chamado.id == chamado_id))
+                status_atual_id = status_atual.scalar_one_or_none()
+                if status_atual_id == STATUS_RESOLVIDO_ID:
+                    continue
+
+                chamado_ref = await db.get(Chamado, chamado_id)
+                await atualizar_status(
+                    db, chamado_id, STATUS_RESOLVIDO_ID, USUARIO_SISTEMA_CODIGO, USUARIO_SISTEMA_NOME,
+                )
+            except Exception:
+                logger.exception("Falha ao auto-resolver chamado %s apos entrega dos correios", chamado_id)
