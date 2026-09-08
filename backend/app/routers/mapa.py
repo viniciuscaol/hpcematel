@@ -1,18 +1,17 @@
 """
-Mapa de atendimentos resolvidos: mostra no mapa onde cada chamado foi
-fechado, com um pino colorido por técnico responsável. Acesso restrito
-a ADMIN, já que localização é informação sensível.
+Mapa de atendimentos resolvidos: pinos coloridos por técnico, com
+relatório completo abaixo (incluindo chamados sem localização). Acesso
+restrito a ADMIN, já que localização é informação sensível.
 """
 from datetime import date
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.authorization import exigir_papel
 from app.database.helpdesk_db import get_helpdesk_db
-from app.services.chamado_service import (
-    contar_resolvidos_sem_local, listar_chamados_resolvidos_com_local, listar_responsaveis_possiveis,
-)
+from app.services.chamado_service import listar_chamados_resolvidos
 from app.services.contato_service import PAPEL_ADMIN
 from app.templates_config import templates
 from app.utils.datas import hoje_local
@@ -32,38 +31,35 @@ async def tela_mapa(
     db: AsyncSession = Depends(get_helpdesk_db),
     data_inicio: str | None = None,
     data_fim: str | None = None,
-    usuarios_codigos: list[int] | None = None,
+    usuarios_codigos: Annotated[list[int], Query()] = [],
 ):
     hoje = hoje_local()
     data_inicio_obj = date.fromisoformat(data_inicio) if data_inicio else hoje
     data_fim_obj = date.fromisoformat(data_fim) if data_fim else hoje
 
-    # Primeiro busca TODOS os chamados do período (sem filtro de usuário),
-    # só pra saber quem de fato resolveu algo — isso monta as opções do filtro.
-    todos_do_periodo = await listar_chamados_resolvidos_com_local(db, data_inicio_obj, data_fim_obj, None)
+    # Busca SEM filtro de usuário primeiro, só pra saber quem de fato
+    # resolveu algo no período — isso monta as opções do filtro.
+    todos_do_periodo = await listar_chamados_resolvidos(db, data_inicio_obj, data_fim_obj, None)
     responsaveis_com_registro = {}
     for c in todos_do_periodo:
         if c.responsavel_codigo:
             responsaveis_com_registro[c.responsavel_codigo] = c.responsavel_nome_snapshot
-
     opcoes_filtro = [
         {"codigo": codigo, "nome": nome}
         for codigo, nome in sorted(responsaveis_com_registro.items(), key=lambda item: item[1])
     ]
 
-    # Agora aplica o filtro de usuário escolhido (se houver) pra decidir o que mostrar de fato.
-    chamados = (
-        [c for c in todos_do_periodo if c.responsavel_codigo in usuarios_codigos]
-        if usuarios_codigos else todos_do_periodo
-    )
+    # Agora sim aplica o filtro escolhido (se houver) — direto no banco.
+    chamados = await listar_chamados_resolvidos(db, data_inicio_obj, data_fim_obj, usuarios_codigos or None)
 
-    sem_local = await contar_resolvidos_sem_local(db, data_inicio_obj, data_fim_obj)
+    com_local = [c for c in chamados if c.fechado_latitude is not None and c.fechado_longitude is not None]
+    sem_local_count = len(chamados) - len(com_local)
 
-    codigos_presentes = sorted({c.responsavel_codigo for c in chamados if c.responsavel_codigo})
+    codigos_presentes = sorted({c.responsavel_codigo for c in com_local if c.responsavel_codigo})
     cor_por_codigo = {codigo: PALETA_CORES[i % len(PALETA_CORES)] for i, codigo in enumerate(codigos_presentes)}
 
     pontos, legenda, nomes_vistos = [], [], set()
-    for c in chamados:
+    for c in com_local:
         cor = cor_por_codigo.get(c.responsavel_codigo, "#6b7280")
         pontos.append({
             "id": c.id, "numero": c.numero_chamado, "titulo": c.titulo,
@@ -78,7 +74,7 @@ async def tela_mapa(
 
     return templates.TemplateResponse("mapa.html", {
         "request": request, "usuario": usuario, "chamados": chamados,
-        "pontos": pontos, "legenda": legenda, "sem_local": sem_local,
+        "pontos": pontos, "legenda": legenda, "sem_local_count": sem_local_count,
         "todos_responsaveis": opcoes_filtro,
         "usuarios_selecionados": usuarios_codigos or [],
         "data_inicio": data_inicio_obj.isoformat(), "data_fim": data_fim_obj.isoformat(),
