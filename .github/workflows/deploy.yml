@@ -12,52 +12,55 @@ env:
   IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: self-hosted
+    outputs:
+      tag: ${{ github.sha }}
     steps:
-      - name: Checkout do código
-        uses: actions/checkout@v4
-
+      - uses: actions/checkout@v4
       - name: Login no GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
-
       - name: Build e push da imagem
         uses: docker/build-push-action@v5
         with:
           context: ./backend
           push: true
-          tags: |
-            ${{ env.IMAGE }}:${{ github.sha }}
-            ${{ env.IMAGE }}:latest
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
 
-      - name: Rodar migrações do banco
+  deploy-homologacao:
+    needs: build
+    runs-on: self-hosted
+    steps:
+      - name: Migrar banco de homologação
         run: |
-          kubectl run helpdesk-migrate-${{ github.run_id }} \
-            --rm -i --restart=Never \
-            --namespace chamados-cematel \
-            --image=${{ env.IMAGE }}:${{ github.sha }} \
+          kubectl run helpdesk-migrate-homolog-${{ github.run_id }} --rm -i --restart=Never \
+            --namespace chamados-cematel-homolog \
+            --image=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} \
             --image-pull-policy=Always \
-            --overrides='{
-              "spec": {
-                "containers": [{
-                  "name": "migrate",
-                  "image": "${{ env.IMAGE }}:${{ github.sha }}",
-                  "command": ["alembic", "upgrade", "head"],
-                  "envFrom": [
-                    {"configMapRef": {"name": "helpdesk-config"}},
-                    {"secretRef": {"name": "helpdesk-secrets"}}
-                  ]
-                }]
-              }
-            }'
-
-      - name: Atualizar o deployment
+            --overrides='{"spec":{"containers":[{"name":"migrate","image":"${{ env.IMAGE }}:${{ needs.build.outputs.tag }}","command":["alembic","upgrade","head"],"envFrom":[{"configMapRef":{"name":"helpdesk-config"}},{"secretRef":{"name":"helpdesk-secrets"}}]}]}}'
+      - name: Deploy em homologação
         run: |
-          kubectl set image deployment/helpdesk-backend \
-            backend=${{ env.IMAGE }}:${{ github.sha }} \
-            -n chamados-cematel
+          kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel-homolog
+          kubectl rollout status deployment/helpdesk-backend -n chamados-cematel-homolog --timeout=120s
+
+  deploy-producao:
+    needs: [build, deploy-homologacao]
+    runs-on: self-hosted
+    environment:
+      name: producao
+    steps:
+      - name: Migrar banco de produção
+        run: |
+          kubectl run helpdesk-migrate-prod-${{ github.run_id }} --rm -i --restart=Never \
+            --namespace chamados-cematel \
+            --image=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} \
+            --image-pull-policy=Always \
+            --overrides='{"spec":{"containers":[{"name":"migrate","image":"${{ env.IMAGE }}:${{ needs.build.outputs.tag }}","command":["alembic","upgrade","head"],"envFrom":[{"configMapRef":{"name":"helpdesk-config"}},{"secretRef":{"name":"helpdesk-secrets"}}]}]}}'
+      - name: Deploy em produção
+        run: |
+          kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel
           kubectl rollout status deployment/helpdesk-backend -n chamados-cematel --timeout=120s
