@@ -26,9 +26,13 @@
           form.requestSubmit();
         },
         function () {
-          form.requestSubmit(); // negou ou falhou o GPS: resolve mesmo assim, sem localização
+          // Negou, sem GPS, ou timeout: remove os campos em vez de mandar vazio,
+          // assim o backend nem recebe latitude/longitude (fica None normalmente).
+          latInput.removeAttribute('name');
+          lonInput.removeAttribute('name');
+          form.requestSubmit();
         },
-        { timeout: 6000 }
+        { timeout: 6000, enableHighAccuracy: false }
       );
     } else {
       form.requestSubmit();
