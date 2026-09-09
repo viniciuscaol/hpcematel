@@ -14,9 +14,9 @@ spec:
           env:
             - name: PGPASSWORD
               valueFrom:
-                secretKeyRef: { name: postgres-secrets, key: HELPDESK_APP_PASSWORD }
+                secretKeyRef: { name: postgres-secrets, key: POSTGRES_PASSWORD }
             - name: DIA_SEMANA
-              value: "Sat"  # troque pelo dia do backup que quer restaurar (Mon/Tue/Wed/Thu/Fri/Sat/Sun)
+              value: "Wed"  # troque pelo dia do backup que quer restaurar (Mon/Tue/Wed/Thu/Fri/Sat/Sun)
           command:
             - /bin/sh
             - -c
