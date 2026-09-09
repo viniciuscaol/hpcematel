@@ -1,0 +1,62 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: backup-diario
+  namespace: chamados-cematel
+spec:
+  schedule: "0 5 * * *"  # 05:00 UTC = 02:00 em Salvador (fora do horário de uso)
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: postgres:16-alpine
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: postgres-secrets, key: POSTGRES_PASSWORD }
+                - name: RCLONE_CONFIG
+                  value: /rclone/rclone.conf
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  apk add --no-cache curl unzip tar >/dev/null
+                  curl -s https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+                  unzip -q /tmp/rclone.zip -d /tmp
+                  mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
+                  chmod +x /usr/local/bin/rclone
+
+                  DATA=$(date +%Y-%m-%d)
+                  mkdir -p /backup
+
+                  echo "Gerando dump do banco..."
+                  pg_dump -h postgres -U helpdesk_app -d helpdesk -F c -f /backup/helpdesk-$DATA.dump
+
+                  echo "Compactando anexos..."
+                  tar -czf /backup/anexos-$DATA.tar.gz -C /app anexos
+
+                  echo "Enviando para o Google Drive..."
+                  rclone copy /backup/helpdesk-$DATA.dump gdrive:backups-helpdesk/banco/
+                  rclone copy /backup/anexos-$DATA.tar.gz gdrive:backups-helpdesk/anexos/
+
+                  echo "Removendo backups com mais de 30 dias no Drive..."
+                  rclone delete --min-age 30d gdrive:backups-helpdesk/banco/
+                  rclone delete --min-age 30d gdrive:backups-helpdesk/anexos/
+
+                  echo "Backup concluido: $DATA"
+              volumeMounts:
+                - { name: rclone-config, mountPath: /rclone }
+                - { name: anexos, mountPath: /app/anexos }
+                - { name: backup-temp, mountPath: /backup }
+          volumes:
+            - name: rclone-config
+              secret: { secretName: rclone-config }
+            - name: anexos
+              persistentVolumeClaim: { claimName: helpdesk-anexos }
+            - name: backup-temp
+              emptyDir: {}
