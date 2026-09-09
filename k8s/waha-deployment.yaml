@@ -20,6 +20,13 @@ spec:
           image: devlikeapro/waha:latest
           ports:
             - containerPort: 3000
+          resources:
+            requests:
+              cpu: "150m"
+              memory: "512Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
           env:
             - name: WHATSAPP_DEFAULT_ENGINE
               value: "NOWEB"
