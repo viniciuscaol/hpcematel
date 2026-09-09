@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restaurar-backup
+  namespace: chamados-cematel-homolog
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: restore
+          image: postgres:16-alpine
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef: { name: postgres-secrets, key: POSTGRES_PASSWORD }
+            - name: DIA_SEMANA
+              value: "Wed"  # troque pelo dia do backup que quer restaurar (Mon/Tue/Wed/Thu/Fri/Sat/Sun)
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              apk add --no-cache curl unzip >/dev/null
+              curl -s https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
+              unzip -q /tmp/rclone.zip -d /tmp
+              mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
+              chmod +x /usr/local/bin/rclone
+              export RCLONE_CONFIG=/rclone/rclone.conf
+
+              echo "Baixando backup do dia $DIA_SEMANA..."
+              rclone copy gdrive:backups-helpdesk/banco/helpdesk-$DIA_SEMANA.dump /backup/
+
+              echo "Restaurando no banco de homologação (substitui os dados atuais de homolog)..."
+              pg_restore --clean --if-exists -h postgres -U helpdesk_app -d helpdesk /backup/helpdesk-$DIA_SEMANA.dump
+
+              echo "Restauracao concluida com sucesso."
+          volumeMounts:
+            - { name: rclone-config, mountPath: /rclone }
+            - { name: backup-temp, mountPath: /backup }
+      volumes:
+        - name: rclone-config
+          secret: { secretName: rclone-config }
+        - name: backup-temp
+          emptyDir: {}
