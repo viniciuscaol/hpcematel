@@ -17,7 +17,7 @@ spec:
               env:
                 - name: PGPASSWORD
                   valueFrom:
-                    secretKeyRef: { name: postgres-secrets, key: POSTGRES_PASSWORD }
+                    secretKeyRef: { name: postgres-secrets, key: HELPDESK_APP_PASSWORD }
                 - name: RCLONE_CONFIG
                   value: /rclone/rclone.conf
               command:
@@ -31,24 +31,21 @@ spec:
                   mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
                   chmod +x /usr/local/bin/rclone
 
-                  DATA=$(date +%Y-%m-%d)
+                  DIA_SEMANA=$(date +%a)
+                  DATA_COMPLETA=$(date +%Y-%m-%d)
                   mkdir -p /backup
 
-                  echo "Gerando dump do banco..."
-                  pg_dump -h postgres -U helpdesk_app -d helpdesk -F c -f /backup/helpdesk-$DATA.dump
+                  echo "Gerando dump do banco (sobrescreve o do mesmo dia da semana)..."
+                  pg_dump -h postgres -U helpdesk_app -d helpdesk -F c -f /backup/helpdesk-$DIA_SEMANA.dump
 
-                  echo "Compactando anexos..."
-                  tar -czf /backup/anexos-$DATA.tar.gz -C /app anexos
+                  echo "Compactando anexos (mantido para sempre, um arquivo por dia)..."
+                  tar -czf /backup/anexos-$DATA_COMPLETA.tar.gz -C /app anexos
 
                   echo "Enviando para o Google Drive..."
-                  rclone copy /backup/helpdesk-$DATA.dump gdrive:backups-helpdesk/banco/
-                  rclone copy /backup/anexos-$DATA.tar.gz gdrive:backups-helpdesk/anexos/
+                  rclone copy /backup/helpdesk-$DIA_SEMANA.dump gdrive:backups-helpdesk/banco/ --no-update-modtime
+                  rclone copy /backup/anexos-$DATA_COMPLETA.tar.gz gdrive:backups-helpdesk/anexos/
 
-                  echo "Removendo backups com mais de 30 dias no Drive..."
-                  rclone delete --min-age 30d gdrive:backups-helpdesk/banco/
-                  rclone delete --min-age 30d gdrive:backups-helpdesk/anexos/
-
-                  echo "Backup concluido: $DATA"
+                  echo "Backup concluido: banco ($DIA_SEMANA) e anexos ($DATA_COMPLETA)"
               volumeMounts:
                 - { name: rclone-config, mountPath: /rclone }
                 - { name: anexos, mountPath: /app/anexos }
