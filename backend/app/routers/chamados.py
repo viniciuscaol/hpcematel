@@ -18,7 +18,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO, buscar_numero_whatsapp
-from app.services.notificacao_service import notificar_atribuicao_individual, notificar_mudanca_status, notificar_novo_chamado
+from app.services.notificacao_service import notificar_atribuicao_individual, notificar_mudanca_status, notificar_novo_chamado, notificar_diretoria
 from app.auth.dependencies import get_current_user
 from app.auth.authorization import exigir_papel, get_current_user_com_papel
 from app.database.helpdesk_db import get_helpdesk_db
@@ -220,6 +220,10 @@ async def processar_novo_chamado(
         responsavel_nome=chamado.responsavel_nome_snapshot,
     )
 
+    await notificar_diretoria(
+        db, cliente_nome=chamado.cliente_nome_snapshot, titulo=chamado.titulo, status_nome="Aberto",
+    )
+
     numero = await buscar_numero_whatsapp(db, responsavel_codigo)
     if numero:
         await notificar_atribuicao_individual(
@@ -265,10 +269,13 @@ async def alterar_status(
 
     if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
-            db,
-            chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
+            db, chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
             titulo=chamado.titulo, numero_chamado=chamado.numero_chamado, status_nome=chamado.status.nome,
         )
+        if status_id == STATUS_RESOLVIDO_ID:
+            await notificar_diretoria(
+                db, cliente_nome=chamado.cliente_nome_snapshot, titulo=chamado.titulo, status_nome=chamado.status.nome,
+            )
     return _redirect_para_chamado(chamado_id)
 
 
