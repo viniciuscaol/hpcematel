@@ -35,6 +35,7 @@ spec:
               mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
               chmod +x /usr/local/bin/rclone
               export RCLONE_CONFIG=/rclone/rclone.conf
+              cp /rclone/rclone.conf /rclone-writable/rclone.conf
 
               echo "Baixando backup do dia $DIA_SEMANA..."
               rclone copy gdrive:backups-helpdesk/banco/helpdesk-$DIA_SEMANA.dump /backup/
@@ -45,9 +46,12 @@ spec:
               echo "Restauracao concluida com sucesso."
           volumeMounts:
             - { name: rclone-config, mountPath: /rclone }
+            - { name: rclone-writable, mountPath: /rclone-writable }
             - { name: backup-temp, mountPath: /backup }
       volumes:
         - name: rclone-config
           secret: { secretName: rclone-config }
+        - name: rclone-writable
+          emptyDir: {}
         - name: backup-temp
           emptyDir: {}

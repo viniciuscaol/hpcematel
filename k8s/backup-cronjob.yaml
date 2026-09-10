@@ -26,40 +26,42 @@ spec:
                   valueFrom:
                     secretKeyRef: { name: postgres-secrets, key: HELPDESK_APP_PASSWORD }
                 - name: RCLONE_CONFIG
-                  value: /rclone/rclone.conf
+                  value: /rclone-writable/rclone.conf
               command:
                 - /bin/sh
                 - -c
                 - |
                   set -e
-                  apk add --no-cache curl unzip tar >/dev/null
+                  apk add --no-cache curl unzip >/dev/null
                   curl -s https://downloads.rclone.org/rclone-current-linux-amd64.zip -o /tmp/rclone.zip
                   unzip -q /tmp/rclone.zip -d /tmp
                   mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
                   chmod +x /usr/local/bin/rclone
+                  cp /rclone/rclone.conf /rclone-writable/rclone.conf
 
                   DIA_SEMANA=$(date +%a)
-                  DATA_COMPLETA=$(date +%Y-%m-%d)
                   mkdir -p /backup
 
                   echo "Gerando dump do banco (sobrescreve o do mesmo dia da semana)..."
                   pg_dump -h postgres -U helpdesk_app -d helpdesk -F c -f /backup/helpdesk-$DIA_SEMANA.dump
 
-                  echo "Compactando anexos (mantido para sempre, um arquivo por dia)..."
-                  tar -czf /backup/anexos-$DATA_COMPLETA.tar.gz -C /app anexos
-
-                  echo "Enviando para o Google Drive..."
+                  echo "Enviando dump do banco para o Google Drive..."
                   rclone copy /backup/helpdesk-$DIA_SEMANA.dump gdrive:backups-helpdesk/banco/ --no-update-modtime
-                  rclone copy /backup/anexos-$DATA_COMPLETA.tar.gz gdrive:backups-helpdesk/anexos/
 
-                  echo "Backup concluido: banco ($DIA_SEMANA) e anexos ($DATA_COMPLETA)"
+                  echo "Sincronizando anexos (envia so o que e novo ou mudou)..."
+                  rclone copy /app/anexos gdrive:backups-helpdesk/anexos/ --checksum --transfers 8
+
+                  echo "Backup concluido: banco ($DIA_SEMANA) e anexos sincronizados"
               volumeMounts:
                 - { name: rclone-config, mountPath: /rclone }
+                - { name: rclone-writable, mountPath: /rclone-writable }
                 - { name: anexos, mountPath: /app/anexos }
                 - { name: backup-temp, mountPath: /backup }
           volumes:
             - name: rclone-config
               secret: { secretName: rclone-config }
+            - name: rclone-writable
+              emptyDir: {}
             - name: anexos
               persistentVolumeClaim: { claimName: helpdesk-anexos }
             - name: backup-temp
