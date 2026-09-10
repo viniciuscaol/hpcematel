@@ -3,7 +3,7 @@ Mapa de atendimentos resolvidos: pinos coloridos por técnico, com
 relatório completo abaixo (incluindo chamados sem localização). Acesso
 restrito a ADMIN, já que localização é informação sensível.
 """
-from datetime import date
+from datetime import date, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, Request
@@ -34,8 +34,12 @@ async def tela_mapa(
     usuarios_codigos: Annotated[list[int], Query()] = [],
 ):
     hoje = hoje_local()
-    data_inicio_obj = date.fromisoformat(data_inicio) if data_inicio else hoje
     data_fim_obj = date.fromisoformat(data_fim) if data_fim else hoje
+    data_inicio_obj = (
+        date.fromisoformat(data_inicio)
+        if data_inicio
+        else data_fim_obj - timedelta(days=3)
+    )
 
     # Busca SEM filtro de usuário primeiro, só pra saber quem de fato
     # resolveu algo no período — isso monta as opções do filtro.
