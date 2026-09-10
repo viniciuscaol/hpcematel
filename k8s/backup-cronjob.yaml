@@ -26,7 +26,7 @@ spec:
                   valueFrom:
                     secretKeyRef: { name: postgres-secrets, key: HELPDESK_APP_PASSWORD }
                 - name: RCLONE_CONFIG
-                  value: /rclone/rclone.conf
+                  value: /rclone-writable/rclone.conf
               command:
                 - /bin/sh
                 - -c
@@ -37,6 +37,7 @@ spec:
                   unzip -q /tmp/rclone.zip -d /tmp
                   mv /tmp/rclone-*-linux-amd64/rclone /usr/local/bin/
                   chmod +x /usr/local/bin/rclone
+                  cp /rclone/rclone.conf /rclone-writable/rclone.conf
 
                   DIA_SEMANA=$(date +%a)
                   mkdir -p /backup
@@ -53,11 +54,14 @@ spec:
                   echo "Backup concluido: banco ($DIA_SEMANA) e anexos sincronizados"
               volumeMounts:
                 - { name: rclone-config, mountPath: /rclone }
+                - { name: rclone-writable, mountPath: /rclone-writable }
                 - { name: anexos, mountPath: /app/anexos }
                 - { name: backup-temp, mountPath: /backup }
           volumes:
             - name: rclone-config
               secret: { secretName: rclone-config }
+            - name: rclone-writable
+              emptyDir: {}
             - name: anexos
               persistentVolumeClaim: { claimName: helpdesk-anexos }
             - name: backup-temp
