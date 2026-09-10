@@ -161,3 +161,20 @@ async def notificar_atualizacao_rastreio(
         f"Status: {descricao_evento}\n\n🔗 {_link(chamado_id)}"
     )
     await _enviar(db, mensagem)
+
+async def notificar_diretoria(
+    db: AsyncSession, cliente_nome: str, titulo: str, status_nome: str,
+) -> None:
+    """
+    Versão resumida para o grupo da diretoria: só cliente, solicitação e
+    status — sem link, sem número de chamado, sem categoria/prioridade.
+    """
+    if not settings.waha_grupo_diretoria_id:
+        return
+
+    mensagem = (
+        f"📋 {cliente_nome}\n"
+        f"Solicitação: {titulo}\n"
+        f"Status: {status_nome}"
+    )
+    await _enviar(db, mensagem, chat_id=settings.waha_grupo_diretoria_id)

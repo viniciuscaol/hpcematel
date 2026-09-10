@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     waha_api_key: str = ""
     waha_sessao: str = "default"
     waha_grupo_id: str = ""
+    waha_grupo_diretoria_id: str = ""
 
     # Rastreio de envio/reverso via Seu Rastreio (gratuito) — vazio = recurso desligado
     seurastreio_api_key: str = ""
