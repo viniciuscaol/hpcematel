@@ -165,15 +165,18 @@ async def notificar_atualizacao_rastreio(
 async def notificar_diretoria(
     db: AsyncSession, cliente_nome: str, titulo: str, status_nome: str,
 ) -> None:
-    """
-    Versão resumida para o grupo da diretoria: só cliente, solicitação e
-    status — sem link, sem número de chamado, sem categoria/prioridade.
-    """
     if not settings.waha_grupo_diretoria_id:
         return
 
+    if status_nome.lower() == "resolvido":
+        emoji = "✅"
+    elif status_nome.lower() == "cancelado":
+        emoji = "🔒"
+    else:
+        emoji = "📋"
+
     mensagem = (
-        f"📋 {cliente_nome}\n"
+        f"{emoji} {cliente_nome}\n"
         f"Solicitação: {titulo}\n"
         f"Status: {status_nome}"
     )
