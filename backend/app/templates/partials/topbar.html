@@ -1,20 +1,20 @@
 <header class="topbar">
   <span class="brand">
-    <svg class="ecg-icon" width="22" height="16" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <polyline points="0,12 16,12 20,4 26,20 32,12 60,12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    {{ app_name }}
+    <span class="brand-logo-chip">
+      <img src="/static/LOGO_TELEMEDICINA.svg" alt="Telemedicina da Bahia" class="brand-logo-img">
+    </span>
+    <span class="brand-texto">{{ app_name }}</span>
   </span>
-    <nav class="main-nav">
+  <nav class="main-nav">
     <a href="/dashboard">Dashboard</a>
     <a href="/chamados">Chamados</a>
     <a href="/chamados/novo">Novo Chamado</a>
+    {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
+    <a href="/tecnico">Técnico</a>
+    {% endif %}
     {% if usuario.papel == 'ADMIN' %}
     <a href="/admin">Administração</a>
     <a href="/mapa">Mapa</a>
-    {% endif %}
-    {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
-    <a href="/tecnico">Técnico</a>
     {% endif %}
   </nav>
   <div class="user-menu">

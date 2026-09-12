@@ -3,13 +3,10 @@
 {% block content %}
 <div class="login-page">
   <form class="login-card" hx-post="/login" hx-target="#login-error" hx-swap="innerHTML">
-      <input type="hidden" name="next" value="{{ next }}">
     <div class="login-brand">
-      <svg class="ecg-icon" width="26" height="18" viewBox="0 0 60 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <polyline points="0,12 16,12 20,4 26,20 32,12 60,12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <h1>{{ app_name }}</h1>
+      <img src="/static/LOGO_TELEMEDICINA.svg" alt="Telemedicina da Bahia" class="login-logo-img">
     </div>
+    <h1 class="login-titulo">{{ app_name }}</h1>
     <p class="subtitle">Entre com seu usuário do sistema</p>
 
     <label for="login">Usuário</label>
