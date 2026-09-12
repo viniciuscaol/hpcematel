@@ -1,4 +1,7 @@
 :root {
+  --color-chrome-bg: #171b34;
+  --color-chrome-bg-2: #232a5c;
+  --color-accent-red: #e63946;
   --color-primary: #2C3E8C;
   --color-primary-dark: #1F2E6B;
   --color-primary-light: #EEF1FB;
@@ -23,13 +26,22 @@ body {
 
 /* --- Login --- */
 
-.login-page {
+/* .login-page {
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 1rem;
   background: linear-gradient(180deg, var(--color-primary) 0%, var(--color-primary) 40%, var(--color-bg) 40%);
+} */
+
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: linear-gradient(180deg, var(--color-chrome-bg) 0%, var(--color-chrome-bg-2) 42%, var(--color-bg) 42%);
 }
 
 .login-card {
@@ -90,21 +102,46 @@ body {
 
 .app-shell { min-height: 100vh; }
 
-.topbar {
+/* .topbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.9rem 1.5rem;
   background: var(--color-primary);
   box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+} */
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.9rem 1.5rem;
+  background: linear-gradient(135deg, var(--color-chrome-bg) 0%, var(--color-chrome-bg-2) 100%);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
 }
 
-.brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 1.05rem; color: white; }
+/* .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 1.05rem; color: white; } */
+
+.brand { display: flex; align-items: center; gap: 0.7rem; }
+
 .brand .ecg-icon { color: #FF8A80; }
 
-.main-nav { display: flex; gap: 1.25rem; }
+/* .main-nav { display: flex; gap: 1.25rem; }
 .main-nav a { color: rgba(255,255,255,0.78); text-decoration: none; font-size: 0.9rem; }
-.main-nav a:hover { color: white; }
+.main-nav a:hover { color: white; } */
+
+.main-nav { display: flex; gap: 1.5rem; }
+.main-nav a {
+  color: rgba(255,255,255,0.72);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding-bottom: 3px;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.main-nav a:hover { color: white; border-bottom-color: var(--color-accent-red); }
+
+/* .user-menu { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; color: white; } */
 
 .user-menu { display: flex; align-items: center; gap: 1rem; font-size: 0.9rem; color: white; }
 
@@ -116,8 +153,11 @@ body {
   font-size: 0.9rem;
   text-decoration: underline;
 }
-.user-menu .link-button { color: rgba(255,255,255,0.85); text-decoration: none; }
-.user-menu .link-button:hover { color: white; }
+/* .user-menu .link-button { color: rgba(255,255,255,0.85); text-decoration: none; }
+.user-menu .link-button:hover { color: white; } */
+
+.user-menu .link-button { color: rgba(255,255,255,0.82); text-decoration: none; }
+.user-menu .link-button:hover { color: var(--color-accent-red); }
 
 .content { padding: 2rem 1.5rem; max-width: 1200px; margin: 0 auto; }
 
@@ -532,18 +572,32 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 
 .brand { display: flex; align-items: center; gap: 0.65rem; }
 
-.brand-logo-chip {
+/* .brand-logo-chip {
   background: white;
   border-radius: 8px;
   padding: 4px 8px;
   display: inline-flex;
   align-items: center;
   line-height: 0;
+} */
+
+.brand-logo-chip {
+  background: rgba(255,255,255,0.95);
+  border-radius: 8px;
+  padding: 5px 10px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
 
-.brand-logo-img { height: 26px; width: auto; display: block; }
+/* .brand-logo-img { height: 26px; width: auto; display: block; } */
 
-.brand-texto { color: white; font-weight: 600; font-size: 1.05rem; }
+.brand-logo-img { height: 24px; width: auto; display: block; }
+
+/* .brand-texto { color: white; font-weight: 600; font-size: 1.05rem; } */
+
+.brand-texto { color: white; font-weight: 600; font-size: 1.05rem; letter-spacing: 0.01em; }
 
 .login-brand {
   display: flex;
@@ -553,9 +607,16 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 
 .login-logo-img { height: 72px; width: auto; }
 
-.login-titulo {
+/* .login-titulo {
   text-align: center;
   margin: 0 0 0.25rem;
   font-size: 1.35rem;
   color: var(--color-primary);
+} */
+
+.login-titulo {
+  text-align: center;
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+  color: var(--color-chrome-bg-2);
 }
