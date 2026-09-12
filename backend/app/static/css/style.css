@@ -527,3 +527,35 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 .mapa-legenda { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0.5rem 0; font-size: 0.85rem; }
 .mapa-legenda-item { display: flex; align-items: center; gap: 0.35rem; }
 .mapa-legenda-cor { width: 12px; height: 12px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+/* ===== Logo da empresa ===== */
+
+.brand { display: flex; align-items: center; gap: 0.65rem; }
+
+.brand-logo-chip {
+  background: white;
+  border-radius: 8px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+}
+
+.brand-logo-img { height: 26px; width: auto; display: block; }
+
+.brand-texto { color: white; font-weight: 600; font-size: 1.05rem; }
+
+.login-brand {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+}
+
+.login-logo-img { height: 72px; width: auto; }
+
+.login-titulo {
+  text-align: center;
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+  color: var(--color-primary);
+}
