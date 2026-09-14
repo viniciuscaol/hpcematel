@@ -584,7 +584,7 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   margin-bottom: 0.75rem;
 }
 
-.login-logo-img { height: 64px; width: auto; }
+.login-logo-img { height: 110px; width: auto; margin-bottom: 0.25rem; }
 
 /* .login-titulo {
   text-align: center;
