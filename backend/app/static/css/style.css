@@ -572,28 +572,7 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 
 .brand { display: flex; align-items: center; gap: 0.65rem; }
 
-/* .brand-logo-chip {
-  background: white;
-  border-radius: 8px;
-  padding: 4px 8px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 0;
-} */
-
-.brand-logo-chip {
-  background: rgba(255,255,255,0.95);
-  border-radius: 8px;
-  padding: 5px 10px;
-  display: inline-flex;
-  align-items: center;
-  line-height: 0;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-
-/* .brand-logo-img { height: 26px; width: auto; display: block; } */
-
-.brand-logo-img { height: 24px; width: auto; display: block; }
+.brand-logo-img { height: 34px; width: auto; display: block; }
 
 /* .brand-texto { color: white; font-weight: 600; font-size: 1.05rem; } */
 
@@ -605,7 +584,7 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   margin-bottom: 0.75rem;
 }
 
-.login-logo-img { height: 72px; width: auto; }
+.login-logo-img { height: 64px; width: auto; }
 
 /* .login-titulo {
   text-align: center;
