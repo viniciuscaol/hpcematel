@@ -1,6 +1,8 @@
 """
 Ponto de entrada da aplicação Chamados Cematel.
 """
+import datetime
+
 from contextlib import asynccontextmanager
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -63,6 +65,7 @@ async def nao_autenticado_handler(request: Request, exc: NaoAutenticado):
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 templates.env.globals["app_name"] = settings.app_name
+templates.env.globals["ano_atual"] = datetime.datetime.now().year
 
 app.include_router(pages.router)
 app.include_router(auth.router)

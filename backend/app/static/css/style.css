@@ -22,6 +22,9 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: var(--color-bg);
   color: var(--color-text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Login --- */
@@ -100,7 +103,12 @@ body {
 
 /* --- App shell / topbar --- */
 
-.app-shell { min-height: 100vh; }
+.app-shell { 
+  min-height: 100vh;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 
 /* .topbar {
   display: flex;
@@ -118,6 +126,9 @@ body {
   padding: 0.9rem 1.5rem;
   background: linear-gradient(135deg, var(--color-chrome-bg) 0%, var(--color-chrome-bg-2) 100%);
   box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 /* .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 1.05rem; color: white; } */
@@ -584,7 +595,7 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   margin-bottom: 0.75rem;
 }
 
-.login-logo-img { height: 110px; width: auto; margin-bottom: 0.25rem; }
+.login-logo-img { height: 150px; width: auto; margin-bottom: 0rem; }
 
 /* .login-titulo {
   text-align: center;
@@ -598,4 +609,13 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   margin: 0 0 0.25rem;
   font-size: 1.35rem;
   color: var(--color-chrome-bg-2);
+}
+
+.rodape-sistema {
+  text-align: center;
+  padding: 1.25rem 1rem;
+  color: var(--color-muted);
+  font-size: 0.78rem;
+  border-top: 1px solid #e5e7eb;
+  margin-top: 2rem;
 }
