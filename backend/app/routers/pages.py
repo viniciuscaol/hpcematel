@@ -26,6 +26,7 @@ from app.services.dashboard_service import (
     contar_meus_chamados, contar_sla_estourado, listar_chamados_recentes,
     top_unidades_com_mais_chamados, top_categorias_geral,
     ranking_tecnicos_por_resolucao, tempo_medio_resolucao_horas,
+    tendencia_abertura_14_dias, percentual_sla_cumprido, chamados_por_dia_semana,
 )
 from app.templates_config import templates
 
@@ -114,6 +115,9 @@ async def tela_dashboard(
         "top_categorias_geral": await top_categorias_geral(db),
         "ranking_tecnicos": await ranking_tecnicos_por_resolucao(db),
         "tempo_medio_resolucao": await tempo_medio_resolucao_horas(db),
+        "tendencia_14_dias": await tendencia_abertura_14_dias(db),
+        "sla_cumprido": await percentual_sla_cumprido(db),
+        "por_dia_semana": await chamados_por_dia_semana(db),
     }
     return templates.TemplateResponse("dashboard.html", contexto)
 
