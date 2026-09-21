@@ -164,3 +164,50 @@ async def tempo_medio_resolucao_horas(db: AsyncSession) -> float | None:
     )
     media = result.scalar_one_or_none()
     return round(media, 1) if media is not None else None
+
+async def tendencia_abertura_14_dias(db: AsyncSession) -> list[dict]:
+    """Quantos chamados foram abertos por dia, nos últimos 14 dias."""
+    from datetime import timedelta
+    from app.utils.datas import hoje_local, intervalo_utc_do_dia, para_horario_local
+
+    limite_data = hoje_local() - timedelta(days=13)
+    inicio_utc, _ = intervalo_utc_do_dia(limite_data)
+
+    result = await db.execute(
+        select(Chamado.criado_em).where(Chamado.excluido.is_(False), Chamado.criado_em >= inicio_utc)
+    )
+    contagem: dict = {}
+    for (criado_em,) in result.all():
+        dia = para_horario_local(criado_em).date()
+        contagem[dia] = contagem.get(dia, 0) + 1
+
+    dias = [limite_data + timedelta(days=i) for i in range(14)]
+    return [{"data": d.strftime("%d/%m"), "quantidade": contagem.get(d, 0)} for d in dias]
+
+
+async def percentual_sla_cumprido(db: AsyncSession) -> dict:
+    """De tudo que já foi resolvido, quanto foi dentro do prazo vs. estourado."""
+    result = await db.execute(
+        select(Chamado.resolvido_em, Chamado.prazo_sla)
+        .where(Chamado.excluido.is_(False), Chamado.resolvido_em.isnot(None))
+    )
+    linhas = result.all()
+    total = len(linhas)
+    if total == 0:
+        return {"percentual": None, "total": 0, "no_prazo": 0}
+
+    no_prazo = sum(1 for resolvido_em, prazo_sla in linhas if resolvido_em <= prazo_sla)
+    return {"percentual": round(no_prazo / total * 100, 1), "total": total, "no_prazo": no_prazo}
+
+
+async def chamados_por_dia_semana(db: AsyncSession) -> list[dict]:
+    """Distribuição histórica de chamados por dia da semana (ajuda a planejar escala)."""
+    from app.utils.datas import para_horario_local
+
+    result = await db.execute(select(Chamado.criado_em).where(Chamado.excluido.is_(False)))
+    nomes = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+    contagem = [0] * 7
+    for (criado_em,) in result.all():
+        contagem[para_horario_local(criado_em).weekday()] += 1
+
+    return [{"nome": nomes[i], "quantidade": contagem[i]} for i in range(7)]
