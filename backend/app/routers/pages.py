@@ -22,12 +22,10 @@ from app.services.auth_service import (
     SemPermissaoHelpDesk,
 )
 from app.services.dashboard_service import (
-    contagem_por_categoria,
-    contagem_por_prioridade,
-    contagem_por_status,
-    contar_meus_chamados,
-    contar_sla_estourado,
-    listar_chamados_recentes,
+    contagem_por_categoria, contagem_por_prioridade, contagem_por_status,
+    contar_meus_chamados, contar_sla_estourado, listar_chamados_recentes,
+    top_unidades_com_mais_chamados, top_categorias_geral,
+    ranking_tecnicos_por_resolucao, tempo_medio_resolucao_horas,
 )
 from app.templates_config import templates
 
@@ -112,6 +110,10 @@ async def tela_dashboard(
         "meus_chamados": await contar_meus_chamados(db, usuario["codigo"]),
         "sla_estourado": await contar_sla_estourado(db),
         "recentes": await listar_chamados_recentes(db),
+        "top_unidades": await top_unidades_com_mais_chamados(db),
+        "top_categorias_geral": await top_categorias_geral(db),
+        "ranking_tecnicos": await ranking_tecnicos_por_resolucao(db),
+        "tempo_medio_resolucao": await tempo_medio_resolucao_horas(db),
     }
     return templates.TemplateResponse("dashboard.html", contexto)
 

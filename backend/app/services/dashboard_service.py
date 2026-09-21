@@ -113,3 +113,54 @@ async def listar_chamados_recentes(db: AsyncSession, limite: int = 6) -> list[Ch
     for c in chamados:
         await aplicar_status_sla(db, c)
     return chamados
+
+async def top_unidades_com_mais_chamados(db: AsyncSession, limite: int = 10) -> list[dict]:
+    """Unidades (clientes) com mais chamados abertos historicamente, excluindo os apagados."""
+    result = await db.execute(
+        select(Chamado.cliente_codigo, Chamado.cliente_nome_snapshot, func.count(Chamado.id).label("qtd"))
+        .where(Chamado.excluido.is_(False))
+        .group_by(Chamado.cliente_codigo, Chamado.cliente_nome_snapshot)
+        .order_by(func.count(Chamado.id).desc())
+        .limit(limite)
+    )
+    return [{"nome": nome, "quantidade": qtd} for _, nome, qtd in result.all()]
+
+
+async def top_categorias_geral(db: AsyncSession, limite: int = 10) -> list[dict]:
+    """Categorias com mais chamados no histórico completo (não só os em aberto)."""
+    result = await db.execute(
+        select(Categoria.nome, func.count(chamado_categoria.c.chamado_id).label("qtd"))
+        .select_from(chamado_categoria)
+        .join(Chamado, Chamado.id == chamado_categoria.c.chamado_id)
+        .join(Categoria, Categoria.id == chamado_categoria.c.categoria_id)
+        .where(Chamado.excluido.is_(False))
+        .group_by(Categoria.nome)
+        .order_by(func.count(chamado_categoria.c.chamado_id).desc())
+        .limit(limite)
+    )
+    return [{"nome": nome, "quantidade": qtd} for nome, qtd in result.all()]
+
+
+async def ranking_tecnicos_por_resolucao(db: AsyncSession, limite: int = 10) -> list[dict]:
+    """Quem mais resolveu chamados, no histórico completo."""
+    from app.services.chamado_service import STATUS_RESOLVIDO_ID
+
+    result = await db.execute(
+        select(Chamado.responsavel_nome_snapshot, func.count(Chamado.id).label("qtd"))
+        .where(Chamado.excluido.is_(False), Chamado.status_id == STATUS_RESOLVIDO_ID)
+        .where(Chamado.responsavel_nome_snapshot.isnot(None))
+        .group_by(Chamado.responsavel_nome_snapshot)
+        .order_by(func.count(Chamado.id).desc())
+        .limit(limite)
+    )
+    return [{"nome": nome, "quantidade": qtd} for nome, qtd in result.all()]
+
+
+async def tempo_medio_resolucao_horas(db: AsyncSession) -> float | None:
+    """Média de horas entre a criação e a resolução, no histórico completo."""
+    result = await db.execute(
+        select(func.avg(func.extract("epoch", Chamado.resolvido_em - Chamado.criado_em) / 3600.0))
+        .where(Chamado.excluido.is_(False), Chamado.resolvido_em.isnot(None))
+    )
+    media = result.scalar_one_or_none()
+    return round(media, 1) if media is not None else None
