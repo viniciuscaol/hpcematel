@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.authorization import get_current_user_com_papel, exigir_papel
 from app.services.chamado_service import listar_chamados_para_assumir
-from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO
+from app.services.contato_service import buscar_papel_usuario, PAPEL_ADMIN, PAPEL_TECNICO
 from app.auth.dependencies import get_current_user_optional
 from app.auth.security import create_access_token
 from app.config import settings
@@ -55,6 +55,7 @@ async def tela_login(
 async def processar_login(
     request: Request,
     response: Response,
+    db: AsyncSession = Depends(get_helpdesk_db),
     login: str = Form(...),
     senha: str = Form(...),
     next: str = Form("/dashboard"),
@@ -80,6 +81,11 @@ async def processar_login(
     # nunca para uma URL externa — evita golpe de "redirecionamento aberto".
     destino = next if next.startswith("/") and not next.startswith("//") else "/dashboard"
 
+    if destino == "/dashboard":
+        papel = await buscar_papel_usuario(db, usuario["codigo"])
+        if papel == PAPEL_TECNICO:
+            destino = "/tecnico"
+
     resposta = Response(status_code=200)
     resposta.set_cookie(
         key="session_token",
@@ -101,6 +107,9 @@ async def tela_dashboard(
 ):
     if usuario is None:
         return RedirectResponse("/login")
+
+    if usuario["papel"] == PAPEL_TECNICO:
+        return RedirectResponse("/tecnico")
 
     contexto = {
         "request": request,
