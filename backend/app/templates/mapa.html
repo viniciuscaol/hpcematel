@@ -15,6 +15,7 @@
         <button type="submit" class="button-link">Filtrar</button>
       </div>
 
+      {% if usuario.papel == 'ADMIN' %}
       <div class="categoria-pills" style="margin: 0.75rem 0;">
         {% for r in todos_responsaveis %}
         <label class="categoria-pill {% if r.codigo in usuarios_selecionados %}categoria-pill-marcada{% endif %}">
@@ -28,6 +29,9 @@
         <span class="sem-resultado">Nenhum chamado resolvido nesse período ainda.</span>
         {% endif %}
       </div>
+      {% else %}
+      <p class="sem-resultado">Mostrando apenas os seus atendimentos.</p>
+      {% endif %}
     </form>
 
     {% if legenda %}

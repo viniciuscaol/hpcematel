@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.authorization import exigir_papel
 from app.database.helpdesk_db import get_helpdesk_db
 from app.services.chamado_service import listar_chamados_resolvidos
-from app.services.contato_service import PAPEL_ADMIN
+from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO
 from app.templates_config import templates
 from app.utils.datas import hoje_local
 
@@ -27,19 +27,20 @@ PALETA_CORES = [
 @router.get("")
 async def tela_mapa(
     request: Request,
-    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)),
+    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN, PAPEL_TECNICO)),
     db: AsyncSession = Depends(get_helpdesk_db),
     data_inicio: str | None = None,
     data_fim: str | None = None,
     usuarios_codigos: Annotated[list[int], Query()] = [],
 ):
     hoje = hoje_local()
+    data_inicio_obj = date.fromisoformat(data_inicio) if data_inicio else hoje
     data_fim_obj = date.fromisoformat(data_fim) if data_fim else hoje
-    data_inicio_obj = (
-        date.fromisoformat(data_inicio)
-        if data_inicio
-        else data_fim_obj - timedelta(days=3)
-    )
+
+    # Técnico só pode ver os próprios atendimentos — trava aqui, no backend,
+    # independente do que vier na URL/formulário.
+    if usuario["papel"] == PAPEL_TECNICO:
+        usuarios_codigos = [usuario["codigo"]]
 
     # Busca SEM filtro de usuário primeiro, só pra saber quem de fato
     # resolveu algo no período — isso monta as opções do filtro.

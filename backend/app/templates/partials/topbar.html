@@ -3,15 +3,17 @@
     <img src="/static/logo-telemedicina.png" alt="Telemedicina da Bahia" class="brand-logo-img">
   </span>
   <nav class="main-nav">
+    {% if usuario.papel != 'TECNICO' %}
     <a href="/dashboard">Dashboard</a>
+    {% endif %}
     <a href="/chamados">Chamados</a>
     <!-- <a href="/chamados/novo">Novo Chamado</a> -->
     {% if usuario.papel in ['TECNICO', 'ADMIN'] %}
     <a href="/tecnico">Técnico</a>
+    <a href="/mapa">Mapa</a>
     {% endif %}
     {% if usuario.papel == 'ADMIN' %}
     <a href="/admin">Administração</a>
-    <a href="/mapa">Mapa</a>
     {% endif %}
   </nav>
   <div class="user-menu">
