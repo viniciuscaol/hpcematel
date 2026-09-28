@@ -28,7 +28,9 @@ class Settings(BaseSettings):
     waha_grupo_diretoria_id: str = ""
 
     # Rastreio de envio/reverso via Seu Rastreio (gratuito) — vazio = recurso desligado
-    seurastreio_api_key: str = ""
+    # seurastreio_api_key: str = ""
+
+    pacotevicio_api_key: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
