@@ -22,6 +22,8 @@
         <p>Criou o chamado.</p>
       {% elif evento.campo == "anexo_excluido" %}
         <p>Removeu o anexo: {{ evento.de }}</p>
+      {% elif evento.campo == "rastreio" %}
+        <p>📦 {{ evento.para }}</p>
       {% else %}
         <p>Alterou <strong>{{ evento.campo }}</strong>: {{ evento.de or "-" }} &rarr; {{ evento.para }}</p>
       {% endif %}
