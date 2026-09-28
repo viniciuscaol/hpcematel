@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.database.helpdesk_db import HelpdeskSessionLocal
-from app.models.chamado import Chamado, ChamadoRastreio
+from app.models.chamado import Chamado, ChamadoHistorico, ChamadoRastreio
 from app.services.chamado_service import STATUS_RESOLVIDO_ID, atualizar_status
 from app.services.correios_service import consultar_rastreio, correios_configurado
 from app.services.notificacao_service import notificar_atualizacao_rastreio
@@ -53,6 +53,16 @@ async def verificar_rastreios_e_notificar() -> None:
                     )
                 except Exception:
                     logger.exception("Falha ao notificar rastreio do chamado %s", chamado.id)
+
+                rotulo_tipo = "Envio" if rastreio.tipo == "envio" else "Reverso"
+                db.add(ChamadoHistorico(
+                    chamado_id=chamado.id,
+                    usuario_codigo=USUARIO_SISTEMA_CODIGO,
+                    usuario_nome_snapshot=USUARIO_SISTEMA_NOME,
+                    campo_alterado="rastreio",
+                    valor_anterior=rastreio.status_atual,
+                    valor_novo=f"[{rotulo_tipo} {rastreio.codigo_rastreio}] {info['descricao_evento']}",
+                ))
 
                 rastreio.status_atual = info["descricao_evento"]
                 rastreio.entregue = info["entregue"]
