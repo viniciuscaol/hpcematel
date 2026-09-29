@@ -9,7 +9,7 @@ acidental (ex: clicar várias vezes em "Enviar anexo" antes da resposta
 voltar) e garante que a tela sempre mostre o estado mais recente.
 """
 import math
-from datetime import date
+from datetime import date, timedeltax
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
@@ -58,23 +58,34 @@ def _redirect_para_chamado(chamado_id: int) -> Response:
     return resposta
 
 
-def _parse_data_filtro(data: str | None) -> tuple[date | None, str]:
-    if data is None:
+def _parse_periodo(data_inicio: str | None, data_fim: str | None) -> tuple[date | None, date | None, str, str]:
+    """
+    Se os dois parâmetros vierem ausentes (primeiro carregamento da página),
+    usa os últimos 3 dias como padrão. String vazia em qualquer um dos dois
+    remove o filtro daquele lado (equivalente a "sem limite").
+    """
+    if data_inicio is None and data_fim is None:
         hoje = hoje_local()
-        return hoje, hoje.isoformat()
-    if data == "":
-        return None, ""
-    return date.fromisoformat(data), data
+        inicio = hoje - timedelta(days=2)
+        return inicio, hoje, inicio.isoformat(), hoje.isoformat()
+
+    inicio_obj = date.fromisoformat(data_inicio) if data_inicio else None
+    fim_obj = date.fromisoformat(data_fim) if data_fim else None
+    return inicio_obj, fim_obj, (data_inicio or ""), (data_fim or "")
 
 
-def _query_string(filtro: str, data: str, busca: str, cliente_codigo: int | None) -> str:
+def _query_string(filtro: str, data_inicio: str, data_fim: str, busca: str, cliente_codigo: int | None, categoria_id: int | None) -> str:
     partes = {"filtro": filtro}
-    if data:
-        partes["data"] = data
+    if data_inicio:
+        partes["data_inicio"] = data_inicio
+    if data_fim:
+        partes["data_fim"] = data_fim
     if busca:
         partes["busca"] = busca
     if cliente_codigo:
         partes["cliente_codigo"] = cliente_codigo
+    if categoria_id:
+        partes["categoria_id"] = categoria_id
     return urlencode(partes)
 
 
@@ -94,66 +105,55 @@ async def _opcoes_edicao(db: AsyncSession) -> dict:
 
 
 async def _contexto_tabela(
-    db: AsyncSession, filtro: str, data: str, busca: str, cliente_codigo: int | None, pagina: int,
+    db, filtro: str, data_inicio: str | None, data_fim: str | None,
+    busca: str, cliente_codigo: int | None, categoria_id: int | None, pagina: int,
 ) -> dict:
-    data_filtro, data_exibicao = _parse_data_filtro(data)
+    data_inicio_obj, data_fim_obj, data_inicio_exibicao, data_fim_exibicao = _parse_periodo(data_inicio, data_fim)
     apenas_abertos = filtro == "abertos"
 
-    total = await contar_chamados(db, apenas_abertos, data_filtro, busca, cliente_codigo)
+    total = await contar_chamados(db, apenas_abertos, data_inicio_obj, data_fim_obj, busca, cliente_codigo, categoria_id)
     total_paginas = max(math.ceil(total / POR_PAGINA_PADRAO), 1)
     pagina = min(max(pagina, 1), total_paginas)
 
     chamados = await listar_chamados(
-        db, apenas_abertos, data_filtro, busca, cliente_codigo, pagina, POR_PAGINA_PADRAO,
+        db, apenas_abertos, data_inicio_obj, data_fim_obj, busca, cliente_codigo, categoria_id, pagina, POR_PAGINA_PADRAO,
     )
 
     cliente_nome = chamados[0].cliente_nome_snapshot if (cliente_codigo and chamados) else None
+    categoria_nome = None
+    if categoria_id and chamados:
+        for cat in chamados[0].categorias:
+            if cat.id == categoria_id:
+                categoria_nome = cat.nome
+                break
 
     return {
-        "chamados": chamados,
-        "filtro": filtro,
-        "data_filtro": data_exibicao,
-        "busca": busca,
-        "cliente_codigo": cliente_codigo,
-        "cliente_nome": cliente_nome,
-        "pagina": pagina,
-        "total_paginas": total_paginas,
-        "total_registros": total,
-        "query_string": _query_string(filtro, data_exibicao, busca, cliente_codigo),
+        "chamados": chamados, "filtro": filtro,
+        "data_inicio": data_inicio_exibicao, "data_fim": data_fim_exibicao,
+        "busca": busca, "cliente_codigo": cliente_codigo, "cliente_nome": cliente_nome,
+        "categoria_id": categoria_id, "categoria_nome": categoria_nome,
+        "pagina": pagina, "total_paginas": total_paginas, "total_registros": total,
+        "query_string": _query_string(filtro, data_inicio_exibicao, data_fim_exibicao, busca, cliente_codigo, categoria_id),
     }
 
 
 @router.get("")
 async def tela_lista_chamados(
-    request: Request,
-    usuario: dict = Depends(get_current_user_com_papel),
-    db: AsyncSession = Depends(get_helpdesk_db),
-    filtro: str = "abertos",
-    data: str | None = None,
-    busca: str = "",
-    cliente_codigo: int | None = None,
-    pagina: int = 1,
+    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    filtro: str = "abertos", data_inicio: str | None = None, data_fim: str | None = None,
+    busca: str = "", cliente_codigo: int | None = None, categoria_id: int | None = None, pagina: int = 1,
 ):
-    contexto = await _contexto_tabela(db, filtro, data or "", busca, cliente_codigo, pagina)
-    if data is None and cliente_codigo is None:
-        contexto["data_filtro"] = hoje_local().isoformat()
-    return templates.TemplateResponse(
-        "chamados_lista.html", {"request": request, "usuario": usuario, **contexto},
-    )
+    contexto = await _contexto_tabela(db, filtro, data_inicio, data_fim, busca, cliente_codigo, categoria_id, pagina)
+    return templates.TemplateResponse("chamados_lista.html", {"request": request, "usuario": usuario, **contexto})
 
 
 @router.get("/tabela")
 async def tabela_chamados(
-    request: Request,
-    usuario: dict = Depends(get_current_user),
-    db: AsyncSession = Depends(get_helpdesk_db),
-    filtro: str = "abertos",
-    data: str = "",
-    busca: str = "",
-    cliente_codigo: int | None = None,
-    pagina: int = 1,
+    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    filtro: str = "abertos", data_inicio: str = "", data_fim: str = "",
+    busca: str = "", cliente_codigo: int | None = None, categoria_id: int | None = None, pagina: int = 1,
 ):
-    contexto = await _contexto_tabela(db, filtro, data, busca, cliente_codigo, pagina)
+    contexto = await _contexto_tabela(db, filtro, data_inicio, data_fim, busca, cliente_codigo, categoria_id, pagina)
     return templates.TemplateResponse("partials/chamados_tabela.html", {"request": request, **contexto})
 
 

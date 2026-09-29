@@ -23,7 +23,7 @@
         <h2>Detalhes</h2>
         <p>
           <strong>Cliente:</strong> {{ chamado.cliente_nome_snapshot }}
-          <a href="/chamados?cliente_codigo={{ chamado.cliente_codigo }}&filtro=todos&data=" class="historico-cliente-link">Ver histórico</a>
+          <a href="/chamados?cliente_codigo={{ chamado.cliente_codigo }}&filtro=todos&data_inicio=&data_fim=" class="historico-cliente-link">Ver histórico</a>
         </p>
         {% if chamado.cliente_contato_snapshot %}<p><strong>Contato:</strong> {{ chamado.cliente_contato_snapshot }}</p>{% endif %}
         {% if chamado.cliente_telefone_snapshot %}<p><strong>Telefone:</strong> {{ chamado.cliente_telefone_snapshot }}</p>{% endif %}

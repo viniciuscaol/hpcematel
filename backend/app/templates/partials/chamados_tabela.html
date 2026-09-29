@@ -2,19 +2,25 @@
   <span>
     {% if cliente_nome %}
       Histórico de <strong>{{ cliente_nome }}</strong>
+    {% elif categoria_nome %}
+      Categoria <strong>{{ categoria_nome }}</strong>
     {% elif filtro == "abertos" %}
       Mostrando <strong>chamados em aberto</strong>
     {% else %}
       Mostrando <strong>todos os status</strong>
     {% endif %}
-    {% if data_filtro %} · {{ data_filtro.split("-")[2] }}/{{ data_filtro.split("-")[1] }}/{{ data_filtro.split("-")[0] }}
-    {% else %} · todas as datas{% endif %}
+    {% if data_inicio or data_fim %}
+      · {{ data_inicio or "início" }} até {{ data_fim or "hoje" }}
+    {% else %}
+      · todas as datas
+    {% endif %}
     {% if busca %} · busca: "{{ busca }}"{% endif %}
   </span>
   <span class="faixa-total">{{ total_registros }} chamado{{ "s" if total_registros != 1 else "" }}</span>
 </div>
 
 {% if chamados %}
+<div class="tabela-scroll">
 <table class="chamados-tabela chamados-tabela-responsiva">
   <thead>
     <tr>
@@ -27,6 +33,7 @@
       <th>Status</th>
       <th>SLA</th>
       <th>Criado em</th>
+      <th>Resolvido em</th>
     </tr>
   </thead>
   <tbody>
@@ -47,10 +54,12 @@
         {% else %}<span class="badge-sla badge-sla-neutro">-</span>{% endif %}
       </td>
       <td data-label="Criado em">{{ chamado.criado_em | data_br }}</td>
+      <td data-label="Resolvido em">{{ chamado.resolvido_em | data_br if chamado.resolvido_em else "-" }}</td>
     </tr>
     {% endfor %}
   </tbody>
 </table>
+</div>
 
 {% if total_paginas > 1 %}
 <div class="paginacao">
