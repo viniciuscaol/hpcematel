@@ -9,11 +9,7 @@ acidental (ex: clicar várias vezes em "Enviar anexo" antes da resposta
 voltar) e garante que a tela sempre mostre o estado mais recente.
 """
 import math
-<<<<<<< HEAD
 from datetime import date, timedelta
-=======
-from datetime import date, timedeltax
->>>>>>> origin/feat/dashboard-links-periodo-chamados-fix-topbar-mobile
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
@@ -143,11 +139,7 @@ async def _contexto_tabela(
 
 @router.get("")
 async def tela_lista_chamados(
-<<<<<<< HEAD
     request: Request, usuario: dict = Depends(get_current_user_com_papel), db: AsyncSession = Depends(get_helpdesk_db),
-=======
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
->>>>>>> origin/feat/dashboard-links-periodo-chamados-fix-topbar-mobile
     filtro: str = "abertos", data_inicio: str | None = None, data_fim: str | None = None,
     busca: str = "", cliente_codigo: int | None = None, categoria_id: int | None = None, pagina: int = 1,
 ):
