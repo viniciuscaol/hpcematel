@@ -9,7 +9,7 @@ acidental (ex: clicar várias vezes em "Enviar anexo" antes da resposta
 voltar) e garante que a tela sempre mostre o estado mais recente.
 """
 import math
-from datetime import date, timedeltax
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
