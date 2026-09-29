@@ -139,7 +139,7 @@ async def _contexto_tabela(
 
 @router.get("")
 async def tela_lista_chamados(
-    request: Request, usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
+    request: Request, usuario: dict = Depends(get_current_user_com_papel), db: AsyncSession = Depends(get_helpdesk_db),
     filtro: str = "abertos", data_inicio: str | None = None, data_fim: str | None = None,
     busca: str = "", cliente_codigo: int | None = None, categoria_id: int | None = None, pagina: int = 1,
 ):
