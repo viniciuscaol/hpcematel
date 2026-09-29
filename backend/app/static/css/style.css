@@ -15,6 +15,14 @@
   --radius: 10px;
 }
 
+html, body {
+  margin: 0;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+* { box-sizing: border-box; }
+
 * { box-sizing: border-box; }
 
 body {
@@ -141,7 +149,16 @@ body {
 .main-nav a { color: rgba(255,255,255,0.78); text-decoration: none; font-size: 0.9rem; }
 .main-nav a:hover { color: white; } */
 
-.main-nav { display: flex; gap: 1.5rem; }
+.main-nav {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.main-nav::-webkit-scrollbar { display: none; }
+
 .main-nav a {
   color: rgba(255,255,255,0.72);
   text-decoration: none;
@@ -619,3 +636,5 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
   border-top: 1px solid #e5e7eb;
   margin-top: 2rem;
 }
+
+.tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
