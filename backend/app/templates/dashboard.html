@@ -2,216 +2,271 @@
 {% block title %}Dashboard - {{ app_name }}{% endblock %}
 {% block content %}
 <div class="app-shell">
-  {% include "partials/topbar.html" %}
+{% include "partials/topbar.html" %}
   <main class="content">
-    <h1>Bem-vindo, {{ usuario.nome }}</h1>
-
-    <div class="cards-grid">
-      <a href="/chamados" class="card-indicador card-clicavel">
-        <span class="card-numero">{{ meus_chamados }}</span>
-        <span class="card-label">Atribuídos a mim (em aberto)</span>
-      </a>
-      <div class="card-indicador {% if sla_estourado > 0 %}card-alerta{% endif %}">
-        <span class="card-numero">{{ sla_estourado }}</span>
-        <span class="card-label">Chamados com SLA estourado</span>
-      </div>
-      {% for status in por_status %}
-      <div class="card-indicador">
-        <span class="card-numero" style="color: {{ status.cor }}">{{ status.quantidade }}</span>
-        <span class="card-label">{{ status.nome }}</span>
-      </div>
+```
+<h1>Bem-vindo, {{ usuario.nome }}</h1>
+<div class="cards-grid">
+  <a href="/chamados" class="card-indicador card-clicavel">
+    <span class="card-numero">{{ meus_chamados }}</span>
+    <span class="card-label">Atribuídos a mim (em aberto)</span>
+  </a>
+  <div class="card-indicador {% if sla_estourado > 0 %}card-alerta{% endif %}">
+    <span class="card-numero">{{ sla_estourado }}</span>
+    <span class="card-label">Chamados com SLA estourado</span>
+  </div>
+  {% for status in por_status %}
+  <div class="card-indicador">
+    <span class="card-numero" style="color: {{ status.cor }}">{{ status.quantidade }}</span>
+    <span class="card-label">{{ status.nome }}</span>
+  </div>
+  {% endfor %}
+</div>
+<!--
+<div class="dashboard-grid">
+  <div class="dashboard-painel">
+    <h2>Chamados abertos por prioridade</h2>
+    {% set max_prioridade = por_prioridade | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in por_prioridade %}
+      <li>
+        <div class="barra-linha">
+          <span class="barra-label">{{ item.nome }}</span>
+          <span class="barra-valor">{{ item.quantidade }}</span>
+        </div>
+        <div class="barra-fundo">
+          <div
+            class="barra-preenchida"
+            style="width: {{ (item.quantidade / max_prioridade * 100) if max_prioridade else 0 }}%; background: {{ item.cor }}">
+          </div>
+        </div>
+      </li>
       {% endfor %}
-    </div>
-
-    <!-- <div class="dashboard-grid">
-      <div class="dashboard-painel">
-        <h2>Chamados abertos por prioridade</h2>
-        {% set max_prioridade = por_prioridade | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in por_prioridade %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_prioridade * 100) if max_prioridade else 0 }}%; background: {{ item.cor }}"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-
-      <div class="dashboard-painel">
-        <h2>Chamados abertos por categoria</h2>
-        {% set max_categoria = por_categoria | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in por_categoria %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_categoria * 100) if max_categoria else 0 }}%"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div> -->
-
-    <div class="cards-grid">
-      <div class="card-indicador">
-        <span class="card-numero">{{ tempo_medio_resolucao if tempo_medio_resolucao is not none else "-" }}{% if tempo_medio_resolucao is not none %}h{% endif %}</span>
-        <span class="card-label">Tempo médio de resolução</span>
-      </div>
-      <div class="card-indicador {% if sla_cumprido.percentual is not none and sla_cumprido.percentual < 70 %}card-alerta{% endif %}">
-        <span class="card-numero">{{ sla_cumprido.percentual if sla_cumprido.percentual is not none else "-" }}{% if sla_cumprido.percentual is not none %}%{% endif %}</span>
-        <span class="card-label">SLA cumprido ({{ sla_cumprido.no_prazo }}/{{ sla_cumprido.total }})</span>
-      </div>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="dashboard-painel">
-        <h2>Top 10 unidades com mais chamados</h2>
-        {% if top_unidades %}
-        {% set max_unidade = top_unidades | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in top_unidades %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_unidade * 100) if max_unidade else 0 }}%"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="sem-resultado">Nenhum chamado registrado ainda.</p>
-        {% endif %}
-      </div>
-
-      <div class="dashboard-painel">
-        <h2>Categorias com mais chamados (histórico geral)</h2>
-        {% if top_categorias_geral %}
-        {% set max_cat_geral = top_categorias_geral | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in top_categorias_geral %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_cat_geral * 100) if max_cat_geral else 0 }}%"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="sem-resultado">Nenhum chamado registrado ainda.</p>
-        {% endif %}
-      </div>
-    </div>
-
-    <div class="dashboard-grid">
-      <div class="dashboard-painel">
-        <h2>Ranking de técnicos (chamados resolvidos)</h2>
-        {% if ranking_tecnicos %}
-        {% set max_tecnico = ranking_tecnicos | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in ranking_tecnicos %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_tecnico * 100) if max_tecnico else 0 }}%; background: #16a34a;"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-        {% else %}
-        <p class="sem-resultado">Nenhum chamado resolvido ainda.</p>
-        {% endif %}
-      </div>
-
-      <div class="dashboard-painel">
-        <h2>Chamados por dia da semana</h2>
-        {% set max_dia_semana = por_dia_semana | map(attribute="quantidade") | max %}
-        <ul class="barra-lista">
-          {% for item in por_dia_semana %}
-          <li>
-            <div class="barra-linha">
-              <span class="barra-label">{{ item.nome }}</span>
-              <span class="barra-valor">{{ item.quantidade }}</span>
-            </div>
-            <div class="barra-fundo">
-              <div class="barra-preenchida" style="width: {{ (item.quantidade / max_dia_semana * 100) if max_dia_semana else 0 }}%; background: #7c3aed;"></div>
-            </div>
-          </li>
-          {% endfor %}
-        </ul>
-      </div>
-    </div>
-
-    <div class="dashboard-painel">
-      <h2>Chamados abertos nos últimos 14 dias</h2>
-      {% set max_tendencia = tendencia_14_dias | map(attribute="quantidade") | max %}
-      <ul class="barra-lista">
-        {% for item in tendencia_14_dias %}
-        <li>
+    </ul>
+  </div>
+  <div class="dashboard-painel">
+    <h2>Chamados abertos por categoria</h2>
+    {% set max_categoria = por_categoria | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in por_categoria %}
+      <li>
+        <div class="barra-linha">
+          <span class="barra-label">{{ item.nome }}</span>
+          <span class="barra-valor">{{ item.quantidade }}</span>
+        </div>
+        <div class="barra-fundo">
+          <div
+            class="barra-preenchida"
+            style="width: {{ (item.quantidade / max_categoria * 100) if max_categoria else 0 }}%">
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+-->
+<div class="cards-grid">
+  <div class="card-indicador">
+    <span class="card-numero">
+      {{ tempo_medio_resolucao if tempo_medio_resolucao is not none else "-" }}{% if tempo_medio_resolucao is not none %}h{% endif %}
+    </span>
+    <span class="card-label">Tempo médio de resolução</span>
+  </div>
+  <div class="card-indicador {% if sla_cumprido.percentual is not none and sla_cumprido.percentual < 70 %}card-alerta{% endif %}">
+    <span class="card-numero">
+      {{ sla_cumprido.percentual if sla_cumprido.percentual is not none else "-" }}{% if sla_cumprido.percentual is not none %}%{% endif %}
+    </span>
+    <span class="card-label">
+      SLA cumprido ({{ sla_cumprido.no_prazo }}/{{ sla_cumprido.total }})
+    </span>
+  </div>
+</div>
+<div class="dashboard-grid">
+  <div class="dashboard-painel">
+    <h2>Top 10 unidades com mais chamados</h2>
+    {% if top_unidades %}
+    {% set max_unidade = top_unidades | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in top_unidades %}
+      <li>
+        <a
+          class="barra-item-link"
+          href="/chamados?cliente_codigo={{ item.codigo }}&filtro=todos&data_inicio=&data_fim="
+        >
           <div class="barra-linha">
-            <span class="barra-label">{{ item.data }}</span>
+            <span class="barra-label">{{ item.nome }}</span>
             <span class="barra-valor">{{ item.quantidade }}</span>
           </div>
           <div class="barra-fundo">
-            <div class="barra-preenchida" style="width: {{ (item.quantidade / max_tendencia * 100) if max_tendencia else 0 }}%; background: #0891b2;"></div>
+            <div
+              class="barra-preenchida"
+              style="width: {{ (item.quantidade / max_unidade * 100) if max_unidade else 0 }}%">
+            </div>
           </div>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
-
-    <div class="dashboard-painel">
-      <div class="page-header">
-        <h2>Chamados recentes</h2>
-        <a href="/chamados" class="link-button">Ver todos</a>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="sem-resultado">Nenhum chamado registrado ainda.</p>
+    {% endif %}
+  </div>
+  <div class="dashboard-painel">
+    <h2>Categorias com mais chamados (histórico geral)</h2>
+    {% if top_categorias_geral %}
+    {% set max_cat_geral = top_categorias_geral | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in top_categorias_geral %}
+      <li>
+        <a
+          class="barra-item-link"
+          href="/chamados?categoria_id={{ item.id }}&filtro=todos&data_inicio=&data_fim="
+        >
+          <div class="barra-linha">
+            <span class="barra-label">{{ item.nome }}</span>
+            <span class="barra-valor">{{ item.quantidade }}</span>
+          </div>
+          <div class="barra-fundo">
+            <div
+              class="barra-preenchida"
+              style="width: {{ (item.quantidade / max_cat_geral * 100) if max_cat_geral else 0 }}%">
+            </div>
+          </div>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="sem-resultado">Nenhum chamado registrado ainda.</p>
+    {% endif %}
+  </div>
+</div>
+<div class="dashboard-grid">
+  <div class="dashboard-painel">
+    <h2>Ranking de técnicos (chamados resolvidos)</h2>
+    {% if ranking_tecnicos %}
+    {% set max_tecnico = ranking_tecnicos | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in ranking_tecnicos %}
+      <li>
+        <div class="barra-linha">
+          <span class="barra-label">{{ item.nome }}</span>
+          <span class="barra-valor">{{ item.quantidade }}</span>
+        </div>
+        <div class="barra-fundo">
+          <div
+            class="barra-preenchida"
+            style="width: {{ (item.quantidade / max_tecnico * 100) if max_tecnico else 0 }}%; background: #16a34a;">
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="sem-resultado">Nenhum chamado resolvido ainda.</p>
+    {% endif %}
+  </div>
+  <div class="dashboard-painel">
+    <h2>Chamados por dia da semana</h2>
+    {% set max_dia_semana = por_dia_semana | map(attribute="quantidade") | max %}
+    <ul class="barra-lista">
+      {% for item in por_dia_semana %}
+      <li>
+        <div class="barra-linha">
+          <span class="barra-label">{{ item.nome }}</span>
+          <span class="barra-valor">{{ item.quantidade }}</span>
+        </div>
+        <div class="barra-fundo">
+          <div
+            class="barra-preenchida"
+            style="width: {{ (item.quantidade / max_dia_semana * 100) if max_dia_semana else 0 }}%; background: #7c3aed;">
+          </div>
+        </div>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+<div class="dashboard-painel">
+  <h2>Chamados abertos nos últimos 14 dias</h2>
+  {% set max_tendencia = tendencia_14_dias | map(attribute="quantidade") | max %}
+  <ul class="barra-lista">
+    {% for item in tendencia_14_dias %}
+    <li>
+      <div class="barra-linha">
+        <span class="barra-label">{{ item.data }}</span>
+        <span class="barra-valor">{{ item.quantidade }}</span>
       </div>
-      {% if recentes %}
-      <table class="chamados-tabela chamados-tabela-responsiva">
-        <thead>
-          <tr>
-            <th data-label="Nº Chamado">Nº Chamado</th>
-            <th data-label="Título">Título</th>
-            <th data-label="Cliente">Cliente</th>
-            <th data-label="Prioridade">Prioridade</th>
-            <th data-label="Status">Status</th>
-            <th data-label="Criado em">Criado em</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for chamado in recentes %}
-          <tr onclick="window.location='/chamados/{{ chamado.id }}'">
-            <td class="numero-chamado">{{ chamado.numero_chamado }}</td>
-            <td>{{ chamado.titulo }}</td>
-            <td>{{ chamado.cliente_nome_snapshot }}</td>
-            <td><span class="badge" style="background: {{ chamado.prioridade.cor }}">{{ chamado.prioridade.nome }}</span></td>
-            <td><span class="badge" style="background: {{ chamado.status.cor }}">{{ chamado.status.nome }}</span></td>
-            <td>{{ chamado.criado_em | data_br }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="sem-resultado">Nenhum chamado cadastrado ainda.</p>
-      {% endif %}
-    </div>
+      <div class="barra-fundo">
+        <div
+          class="barra-preenchida"
+          style="width: {{ (item.quantidade / max_tendencia * 100) if max_tendencia else 0 }}%; background: #0891b2;">
+        </div>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+<div class="dashboard-painel">
+  <div class="page-header">
+    <h2>Chamados recentes</h2>
+    <a href="/chamados" class="link-button">Ver todos</a>
+  </div>
+  {% if recentes %}
+  <div class="tabela-scroll">
+    <table class="chamados-tabela chamados-tabela-responsiva">
+      <thead>
+        <tr>
+          <th data-label="Nº Chamado">Nº Chamado</th>
+          <th data-label="Título">Título</th>
+          <th data-label="Cliente">Cliente</th>
+          <th data-label="Prioridade">Prioridade</th>
+          <th data-label="Status">Status</th>
+          <th data-label="Criado em">Criado em</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for chamado in recentes %}
+        <tr onclick="window.location='/chamados/{{ chamado.id }}'">
+          <td class="numero-chamado">
+            {{ chamado.numero_chamado }}
+          </td>
+          <td>
+            {{ chamado.titulo }}
+          </td>
+          <td>
+            {{ chamado.cliente_nome_snapshot }}
+          </td>
+          <td>
+            <span
+              class="badge"
+              style="background: {{ chamado.prioridade.cor }}"
+            >
+              {{ chamado.prioridade.nome }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="badge"
+              style="background: {{ chamado.status.cor }}"
+            >
+              {{ chamado.status.nome }}
+            </span>
+          </td>
+          <td>
+            {{ chamado.criado_em | data_br }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="sem-resultado">Nenhum chamado cadastrado ainda.</p>
+  {% endif %}
+</div>
+```
   </main>
 </div>
 {% endblock %}

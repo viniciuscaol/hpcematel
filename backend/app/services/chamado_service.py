@@ -110,14 +110,21 @@ async def listar_responsaveis_possiveis() -> list[dict]:
     return await listar_usuarios_helpdesk()
 
 
-def _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo):
+def _query_base_chamados(
+    apenas_abertos: bool, status_abertos_ids: list[int],
+    data_inicio: date | None, data_fim: date | None,
+    busca: str | None, cliente_codigo: int | None, categoria_id: int | None,
+):
     from app.utils.datas import intervalo_utc_do_dia
+
     condicoes = [Chamado.excluido.is_(False)]
     if apenas_abertos:
         condicoes.append(Chamado.status_id.in_(status_abertos_ids))
-    if data_local is not None:
-        inicio_utc, fim_utc = intervalo_utc_do_dia(data_local)
+    if data_inicio is not None:
+        inicio_utc, _ = intervalo_utc_do_dia(data_inicio)
         condicoes.append(Chamado.criado_em >= inicio_utc)
+    if data_fim is not None:
+        _, fim_utc = intervalo_utc_do_dia(data_fim)
         condicoes.append(Chamado.criado_em < fim_utc)
     if busca:
         termo = f"%{busca.strip()}%"
@@ -127,21 +134,30 @@ def _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, 
         ))
     if cliente_codigo is not None:
         condicoes.append(Chamado.cliente_codigo == cliente_codigo)
+    if categoria_id is not None:
+        condicoes.append(Chamado.categorias.any(Categoria.id == categoria_id))
     return condicoes
 
 
-async def contar_chamados(db, apenas_abertos=True, data_local=None, busca=None, cliente_codigo=None) -> int:
+async def contar_chamados(
+    db, apenas_abertos: bool = True, data_inicio: date | None = None, data_fim: date | None = None,
+    busca: str | None = None, cliente_codigo: int | None = None, categoria_id: int | None = None,
+) -> int:
     status_abertos_ids = await _status_abertos_ids(db) if apenas_abertos else []
-    condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo)
+    condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_inicio, data_fim, busca, cliente_codigo, categoria_id)
     result = await db.execute(select(func.count(Chamado.id)).where(*condicoes))
     return result.scalar_one()
 
 
-async def listar_chamados(db, apenas_abertos=True, data_local=None, busca=None, cliente_codigo=None,
-                           pagina=1, por_pagina=POR_PAGINA_PADRAO) -> list[Chamado]:
+async def listar_chamados(
+    db, apenas_abertos: bool = True, data_inicio: date | None = None, data_fim: date | None = None,
+    busca: str | None = None, cliente_codigo: int | None = None, categoria_id: int | None = None,
+    pagina: int = 1, por_pagina: int = POR_PAGINA_PADRAO,
+) -> list[Chamado]:
     status_abertos_ids = await _status_abertos_ids(db) if apenas_abertos else []
-    condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_local, busca, cliente_codigo)
+    condicoes = _query_base_chamados(apenas_abertos, status_abertos_ids, data_inicio, data_fim, busca, cliente_codigo, categoria_id)
     offset = max(pagina - 1, 0) * por_pagina
+
     query = (
         select(Chamado).where(*condicoes)
         .options(selectinload(Chamado.categorias), selectinload(Chamado.prioridade), selectinload(Chamado.status))
@@ -152,7 +168,6 @@ async def listar_chamados(db, apenas_abertos=True, data_local=None, busca=None, 
     for c in chamados:
         await aplicar_status_sla(db, c)
     return chamados
-
 
 async def obter_chamado(db: AsyncSession, chamado_id: int) -> Chamado | None:
     query = (

@@ -115,7 +115,6 @@ async def listar_chamados_recentes(db: AsyncSession, limite: int = 6) -> list[Ch
     return chamados
 
 async def top_unidades_com_mais_chamados(db: AsyncSession, limite: int = 10) -> list[dict]:
-    """Unidades (clientes) com mais chamados abertos historicamente, excluindo os apagados."""
     result = await db.execute(
         select(Chamado.cliente_codigo, Chamado.cliente_nome_snapshot, func.count(Chamado.id).label("qtd"))
         .where(Chamado.excluido.is_(False))
@@ -123,22 +122,21 @@ async def top_unidades_com_mais_chamados(db: AsyncSession, limite: int = 10) -> 
         .order_by(func.count(Chamado.id).desc())
         .limit(limite)
     )
-    return [{"nome": nome, "quantidade": qtd} for _, nome, qtd in result.all()]
+    return [{"codigo": codigo, "nome": nome, "quantidade": qtd} for codigo, nome, qtd in result.all()]
 
 
 async def top_categorias_geral(db: AsyncSession, limite: int = 10) -> list[dict]:
-    """Categorias com mais chamados no histórico completo (não só os em aberto)."""
     result = await db.execute(
-        select(Categoria.nome, func.count(chamado_categoria.c.chamado_id).label("qtd"))
+        select(Categoria.id, Categoria.nome, func.count(chamado_categoria.c.chamado_id).label("qtd"))
         .select_from(chamado_categoria)
         .join(Chamado, Chamado.id == chamado_categoria.c.chamado_id)
         .join(Categoria, Categoria.id == chamado_categoria.c.categoria_id)
         .where(Chamado.excluido.is_(False))
-        .group_by(Categoria.nome)
+        .group_by(Categoria.id, Categoria.nome)
         .order_by(func.count(chamado_categoria.c.chamado_id).desc())
         .limit(limite)
     )
-    return [{"nome": nome, "quantidade": qtd} for nome, qtd in result.all()]
+    return [{"id": cid, "nome": nome, "quantidade": qtd} for cid, nome, qtd in result.all()]
 
 
 async def ranking_tecnicos_por_resolucao(db: AsyncSession, limite: int = 10) -> list[dict]:
