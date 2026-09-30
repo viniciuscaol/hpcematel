@@ -13,7 +13,7 @@ from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response as PDFResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -48,6 +48,7 @@ from app.services.chamado_service import (
 )
 from app.templates_config import templates
 from app.utils.datas import hoje_local
+from app.services.os_service import gerar_pdf_os
 
 router = APIRouter(prefix="/chamados", tags=["chamados"])
 
@@ -425,3 +426,20 @@ async def salvar_rastreio_rota(
 ):
     await salvar_rastreios(db, chamado_id, codigo_rastreio_envio, None)
     return _redirect_para_chamado(chamado_id)
+
+@router.get("/{chamado_id}/os")
+async def gerar_os_pdf(
+    chamado_id: int,
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_helpdesk_db),
+):
+    chamado = await obter_chamado(db, chamado_id)
+    if chamado is None:
+        return RedirectResponse("/chamados", status_code=303)
+
+    pdf_bytes = gerar_pdf_os(chamado)
+    return PDFResponse(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="os-{chamado.numero_chamado}.pdf"'},
+    )
