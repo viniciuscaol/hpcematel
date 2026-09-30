@@ -62,23 +62,32 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     _checkbox(c, x0, y_topo - 7 * mm, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y_topo - 9.8 * mm, "VISITA PREVENTIVA")
 
-    # 2. Logo (centro, maior)
+    # 2. Logo (centro, ainda maior)
     if os.path.exists(LOGO_PATH):
         try:
             c.drawImage(
-                LOGO_PATH, x0 + 48 * mm, ALTURA_VIA - margem - 18 * mm,
-                width=55 * mm, height=17 * mm, preserveAspectRatio=True, mask="auto",
+                LOGO_PATH, x0 + 38 * mm, ALTURA_VIA - margem - 22 * mm,
+                width=65 * mm, height=21 * mm, preserveAspectRatio=True, mask="auto",
             )
         except Exception:
             pass
 
-    # 3. Título da OS (direita da logo, quebrado em linhas como no layout físico)
+    # 3. Título da OS (Direita da logo, sem "Solicitação de", MANUTENÇÃO centralizado)
     x_titulo = x0 + 108 * mm
-    c.setFont("Helvetica-Bold", 9)
-    c.drawString(x_titulo, y_topo, "SOLICITAÇÃO DE")
+    
+    c.setFont("Helvetica-Bold", 12)
+    texto_ordem = "ORDEM DE SERVIÇO"
+    c.drawString(x_titulo, y_topo - 2 * mm, texto_ordem)
+    
     c.setFont("Helvetica-Bold", 11)
-    c.drawString(x_titulo, y_topo - 4.5 * mm, "ORDEM DE SERVIÇO")
-    c.drawString(x_titulo, y_topo - 9 * mm, "MANUTENÇÃO")
+    texto_manutencao = "MANUTENÇÃO"
+    
+    # Cálculo para centralizar a palavra MANUTENÇÃO abaixo de ORDEM DE SERVIÇO
+    largura_ordem = c.stringWidth(texto_ordem, "Helvetica-Bold", 12)
+    largura_manutencao = c.stringWidth(texto_manutencao, "Helvetica-Bold", 11)
+    x_manutencao = x_titulo + (largura_ordem - largura_manutencao) / 2
+    
+    c.drawString(x_manutencao, y_topo - 7 * mm, texto_manutencao)
 
     # 4. Número da OS (extrema direita)
     c.setFillColorRGB(0.82, 0.1, 0.1)
@@ -146,39 +155,43 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
             c.drawString(x0 + 1 * mm, y + 0.5 * mm, linhas_descricao[i])
         y -= 6 * mm
 
-    # Situação da OS
-    y -= 2 * mm
+    # ==========================
+    # RODAPÉ / ASSINATURAS (ESPAÇAMENTO AJUSTADO)
+    # ==========================
+    
+    # Situação da OS (Menos espaço vazio acima)
+    y -= 1 * mm
     c.setFont("Helvetica-Bold", 10.5)
     c.drawCentredString(LARGURA_VIA / 2, y, "Situação da Ordem de serviço:")
-    y -= 8 * mm
+    y -= 5 * mm # Reduzido (era 8mm)
 
     c.setFont("Helvetica", 10)
     _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Executada")
-    y -= 7 * mm
+    y -= 6 * mm # Reduzido (era 7mm)
 
     _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Não Executada - Motivo")
     lx4 = x0 + 5 * mm + c.stringWidth("Não Executada - Motivo", "Helvetica", 10) + 2 * mm
     c.line(lx4, y - 3.8 * mm, x_fim, y - 3.8 * mm)
-    y -= 7 * mm
+    y -= 6 * mm # Reduzido (era 7mm)
 
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Observação:")
     lx5 = x0 + 5 * mm + c.stringWidth("Observação:", "Helvetica", 10) + 2 * mm
     c.line(lx5, y - 3.8 * mm, x_fim, y - 3.8 * mm)
-    y -= 9 * mm
+    y -= 6 * mm # Reduzido (era 9mm)
     c.line(x0, y - 1 * mm, x_fim, y - 1 * mm)
 
-    # Assinaturas
-    y = margem + 14 * mm
+    # Assinaturas (Linha subiu de 14mm para 17mm para aumentar o espaço para escrita manual)
+    y = margem + 17 * mm 
     largura_assinatura = (LARGURA_VIA - 2 * margem - 16 * mm) / 2
     c.line(x0, y, x0 + largura_assinatura, y)
     c.line(x0 + largura_assinatura + 16 * mm, y, x_fim, y)
     c.setFont("Helvetica-Bold", 10)
-    c.drawCentredString(x0 + largura_assinatura / 2, y - 5 * mm, "Responsável Unidade")
-    c.drawCentredString(x0 + largura_assinatura + 16 * mm + largura_assinatura / 2, y - 5 * mm, "Responsável Telemedicina")
+    c.drawCentredString(x0 + largura_assinatura / 2, y - 4 * mm, "Responsável Unidade")
+    c.drawCentredString(x0 + largura_assinatura + 16 * mm + largura_assinatura / 2, y - 4 * mm, "Responsável Telemedicina")
 
-    # Rodapé
+    # Rodapé Endereço
     c.setFont("Helvetica", 7.5)
     c.drawCentredString(
         LARGURA_VIA / 2, margem + 3 * mm,
