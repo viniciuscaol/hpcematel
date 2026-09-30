@@ -51,7 +51,7 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     y_topo = ALTURA_VIA - margem - 6 * mm
 
     # ==========================
-    # CABEÇALHO REESTRUTURADO
+    # CABEÇALHO REESTRUTURADO E ALINHADO
     # ==========================
 
     # 1. Tipo de visita (esquerda)
@@ -62,44 +62,47 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     _checkbox(c, x0, y_topo - 7 * mm, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y_topo - 9.8 * mm, "VISITA PREVENTIVA")
 
-    # 2. Logo (centro, ainda maior)
+    # 2. Logo (Aumentada e Posicionada para não encostar na linha de baixo)
     if os.path.exists(LOGO_PATH):
         try:
             c.drawImage(
-                LOGO_PATH, x0 + 38 * mm, ALTURA_VIA - margem - 22 * mm,
-                width=65 * mm, height=21 * mm, preserveAspectRatio=True, mask="auto",
+                LOGO_PATH, x0 + 35 * mm, ALTURA_VIA - margem - 24 * mm,
+                width=72 * mm, height=23 * mm, preserveAspectRatio=True, mask="auto",
             )
         except Exception:
             pass
 
-    # 3. Título da OS (Direita da logo, sem "Solicitação de", MANUTENÇÃO centralizado)
-    x_titulo = x0 + 108 * mm
+    # 3. Título da OS
+    x_titulo = x0 + 110 * mm
     
     c.setFont("Helvetica-Bold", 12)
     texto_ordem = "ORDEM DE SERVIÇO"
-    c.drawString(x_titulo, y_topo - 2 * mm, texto_ordem)
+    
+    # Criamos uma linha base cravada para que o Número da OS e o Título fiquem 100% alinhados na horizontal
+    y_title_baseline = y_topo - 2 * mm 
+    c.drawString(x_titulo, y_title_baseline, texto_ordem)
     
     c.setFont("Helvetica-Bold", 11)
     texto_manutencao = "MANUTENÇÃO"
     
-    # Cálculo para centralizar a palavra MANUTENÇÃO abaixo de ORDEM DE SERVIÇO
+    # Centralizando MANUTENÇÃO exatamente abaixo de ORDEM DE SERVIÇO
     largura_ordem = c.stringWidth(texto_ordem, "Helvetica-Bold", 12)
     largura_manutencao = c.stringWidth(texto_manutencao, "Helvetica-Bold", 11)
     x_manutencao = x_titulo + (largura_ordem - largura_manutencao) / 2
     
-    c.drawString(x_manutencao, y_topo - 7 * mm, texto_manutencao)
+    c.drawString(x_manutencao, y_title_baseline - 5 * mm, texto_manutencao)
 
-    # 4. Número da OS (extrema direita)
+    # 4. Número da OS (Agora perfeitamente alinhado com "ORDEM DE SERVIÇO")
     c.setFillColorRGB(0.82, 0.1, 0.1)
     c.setFont("Helvetica-Bold", 14)
-    c.drawRightString(LARGURA_VIA - margem - 4 * mm, y_topo - 4.5 * mm, f"Nº {numero_os}")
+    c.drawRightString(LARGURA_VIA - margem - 4 * mm, y_title_baseline, f"Nº {numero_os}")
     c.setFillColorRGB(0, 0, 0)
 
     # ==========================
-    # CORPO DA OS
+    # CORPO DA OS (Descemos 2mm para acomodar a logo gigante)
     # ==========================
     
-    y = ALTURA_VIA - margem - 25 * mm
+    y = ALTURA_VIA - margem - 27 * mm
     x_fim = LARGURA_VIA - margem - 4 * mm
 
     _linha_com_valor(c, x0, y, x_fim, "Unidade Solicitante", chamado)
@@ -156,33 +159,36 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
         y -= 6 * mm
 
     # ==========================
-    # RODAPÉ / ASSINATURAS (ESPAÇAMENTO AJUSTADO)
+    # RODAPÉ / ASSINATURAS
     # ==========================
     
-    # Situação da OS (Menos espaço vazio acima)
     y -= 1 * mm
     c.setFont("Helvetica-Bold", 10.5)
     c.drawCentredString(LARGURA_VIA / 2, y, "Situação da Ordem de serviço:")
-    y -= 5 * mm # Reduzido (era 8mm)
+    y -= 5 * mm 
 
     c.setFont("Helvetica", 10)
     _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Executada")
-    y -= 6 * mm # Reduzido (era 7mm)
+    y -= 6 * mm 
 
     _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Não Executada - Motivo")
     lx4 = x0 + 5 * mm + c.stringWidth("Não Executada - Motivo", "Helvetica", 10) + 2 * mm
     c.line(lx4, y - 3.8 * mm, x_fim, y - 3.8 * mm)
-    y -= 6 * mm # Reduzido (era 7mm)
+    y -= 6 * mm 
 
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Observação:")
     lx5 = x0 + 5 * mm + c.stringWidth("Observação:", "Helvetica", 10) + 2 * mm
+    
+    # Primeira linha de observação
     c.line(lx5, y - 3.8 * mm, x_fim, y - 3.8 * mm)
-    y -= 6 * mm # Reduzido (era 9mm)
-    c.line(x0, y - 1 * mm, x_fim, y - 1 * mm)
+    
+    # Segunda linha de observação (CORREÇÃO: o espaçamento agora é de exatos 6mm para caber a letra)
+    y -= 6 * mm 
+    c.line(x0, y - 3.8 * mm, x_fim, y - 3.8 * mm)
 
-    # Assinaturas (Linha subiu de 14mm para 17mm para aumentar o espaço para escrita manual)
+    # Assinaturas 
     y = margem + 17 * mm 
     largura_assinatura = (LARGURA_VIA - 2 * margem - 16 * mm) / 2
     c.line(x0, y, x0 + largura_assinatura, y)
