@@ -29,13 +29,13 @@ def _checkbox(c, x, y, tamanho, marcado=False):
 
 
 def _linha_com_valor(c, x_ini, y, x_fim, label, valor):
-    c.setFont("Helvetica", 9.5)
+    c.setFont("Helvetica", 10)
     c.drawString(x_ini, y, label)
-    largura_label = c.stringWidth(label, "Helvetica", 9.5)
+    largura_label = c.stringWidth(label, "Helvetica", 10)
     x_valor = x_ini + largura_label + 2 * mm
     c.line(x_valor, y - 1 * mm, x_fim, y - 1 * mm)
     if valor:
-        c.setFont("Helvetica", 9.5)
+        c.setFont("Helvetica", 10)
         c.drawString(x_valor + 1.5 * mm, y + 0.5 * mm, valor)
 
 
@@ -48,51 +48,61 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     c.roundRect(margem, margem, LARGURA_VIA - 2 * margem, ALTURA_VIA - 2 * margem, 4 * mm, stroke=1, fill=0)
 
     x0 = margem + 4 * mm
-    y = ALTURA_VIA - margem - 6 * mm
+    y_topo = ALTURA_VIA - margem - 6 * mm
 
-    # Tipo de visita (em branco, marcado manualmente)
-    c.setFont("Helvetica-Bold", 8.5)
-    _checkbox(c, x0, y, 3.2 * mm)
-    c.drawString(x0 + 5 * mm, y - 2.8 * mm, "VISITA CORRETIVA")
-    y -= 6.5 * mm
-    _checkbox(c, x0, y, 3.2 * mm)
-    c.drawString(x0 + 5 * mm, y - 2.8 * mm, "VISITA PREVENTIVA")
+    # ==========================
+    # CABEÇALHO REESTRUTURADO
+    # ==========================
 
-    # Logo
+    # 1. Tipo de visita (esquerda)
+    c.setFont("Helvetica-Bold", 10)
+    _checkbox(c, x0, y_topo, 3.5 * mm)
+    c.drawString(x0 + 5 * mm, y_topo - 2.8 * mm, "VISITA CORRETIVA")
+    
+    _checkbox(c, x0, y_topo - 7 * mm, 3.5 * mm)
+    c.drawString(x0 + 5 * mm, y_topo - 9.8 * mm, "VISITA PREVENTIVA")
+
+    # 2. Logo (centro, maior)
     if os.path.exists(LOGO_PATH):
         try:
             c.drawImage(
-                LOGO_PATH, 76 * mm, ALTURA_VIA - margem - 15 * mm,
-                width=40 * mm, height=13 * mm, preserveAspectRatio=True, mask="auto",
+                LOGO_PATH, x0 + 48 * mm, ALTURA_VIA - margem - 18 * mm,
+                width=55 * mm, height=17 * mm, preserveAspectRatio=True, mask="auto",
             )
         except Exception:
             pass
 
-    # Título
-    c.setFont("Helvetica-Bold", 10.5)
-    c.drawString(120 * mm, ALTURA_VIA - margem - 7 * mm, "SOLICITAÇÃO DE ORDEM DE SERVIÇO")
-    c.drawString(120 * mm, ALTURA_VIA - margem - 12 * mm, "MANUTENÇÃO")
+    # 3. Título da OS (direita da logo, quebrado em linhas como no layout físico)
+    x_titulo = x0 + 108 * mm
+    c.setFont("Helvetica-Bold", 9)
+    c.drawString(x_titulo, y_topo, "SOLICITAÇÃO DE")
+    c.setFont("Helvetica-Bold", 11)
+    c.drawString(x_titulo, y_topo - 4.5 * mm, "ORDEM DE SERVIÇO")
+    c.drawString(x_titulo, y_topo - 9 * mm, "MANUTENÇÃO")
 
-    # Número da OS = número do chamado
+    # 4. Número da OS (extrema direita)
     c.setFillColorRGB(0.82, 0.1, 0.1)
-    c.setFont("Helvetica-Bold", 13)
-    c.drawRightString(LARGURA_VIA - margem - 4 * mm, ALTURA_VIA - margem - 9 * mm, f"Nº {numero_os}")
+    c.setFont("Helvetica-Bold", 14)
+    c.drawRightString(LARGURA_VIA - margem - 4 * mm, y_topo - 4.5 * mm, f"Nº {numero_os}")
     c.setFillColorRGB(0, 0, 0)
 
-    # Campos principais
-    y = ALTURA_VIA - margem - 22 * mm
+    # ==========================
+    # CORPO DA OS
+    # ==========================
+    
+    y = ALTURA_VIA - margem - 25 * mm
     x_fim = LARGURA_VIA - margem - 4 * mm
 
     _linha_com_valor(c, x0, y, x_fim, "Unidade Solicitante", chamado)
     y -= 7 * mm
 
-    c.setFont("Helvetica", 9.5)
+    c.setFont("Helvetica", 10)
     c.drawString(x0, y, "Data")
-    lx = x0 + c.stringWidth("Data", "Helvetica", 9.5) + 2 * mm
+    lx = x0 + c.stringWidth("Data", "Helvetica", 10) + 2 * mm
     c.line(lx, y - 1 * mm, lx + 18 * mm, y - 1 * mm)
     c.drawString(lx + 1 * mm, y + 0.5 * mm, data_impressao_str)
     c.drawString(lx + 22 * mm, y, "Funcionamento de plantão:")
-    lx2 = lx + 22 * mm + c.stringWidth("Funcionamento de plantão:", "Helvetica", 9.5) + 2 * mm
+    lx2 = lx + 22 * mm + c.stringWidth("Funcionamento de plantão:", "Helvetica", 10) + 2 * mm
     c.line(lx2, y - 1 * mm, x_fim, y - 1 * mm)
     y -= 7 * mm
 
@@ -100,31 +110,31 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     y -= 7 * mm
 
     # Manutenção: categorias do chamado marcadas + "Outros" em branco
-    c.setFont("Helvetica", 9.5)
+    c.setFont("Helvetica", 10)
     c.drawString(x0, y, "Manutenção:")
-    cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 9.5) + 3 * mm
+    cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 10) + 3 * mm
     cy = y
     for nome in categorias_nomes:
         if cx > x_fim - 30 * mm:
-            cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 9.5) + 3 * mm
+            cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 10) + 3 * mm
             cy -= 6 * mm
         _checkbox(c, cx, cy + 2.6 * mm, 3 * mm, marcado=True)
-        c.setFont("Helvetica", 8.5)
+        c.setFont("Helvetica", 9)
         c.drawString(cx + 4.2 * mm, cy, nome)
-        cx += 4.2 * mm + c.stringWidth(nome, "Helvetica", 8.5) + 4 * mm
+        cx += 4.2 * mm + c.stringWidth(nome, "Helvetica", 9) + 4 * mm
 
     if cx > x_fim - 45 * mm:
-        cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 9.5) + 3 * mm
+        cx = x0 + c.stringWidth("Manutenção:", "Helvetica", 10) + 3 * mm
         cy -= 6 * mm
     _checkbox(c, cx, cy + 2.6 * mm, 3 * mm, marcado=False)
-    c.setFont("Helvetica", 8.5)
+    c.setFont("Helvetica", 9)
     c.drawString(cx + 4.2 * mm, cy, "Outros")
-    lx3 = cx + 4.2 * mm + c.stringWidth("Outros", "Helvetica", 8.5) + 2 * mm
+    lx3 = cx + 4.2 * mm + c.stringWidth("Outros", "Helvetica", 9) + 2 * mm
     c.line(lx3, cy - 1 * mm, x_fim, cy - 1 * mm)
     y = cy - 7 * mm
 
     # Descrição
-    c.setFont("Helvetica", 9.5)
+    c.setFont("Helvetica", 10)
     c.drawString(x0, y, "Descrição do defeito ou atividade a ser executada:")
     y -= 6 * mm
 
@@ -132,29 +142,29 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     for i in range(2):
         c.line(x0, y - 1 * mm, x_fim, y - 1 * mm)
         if i < len(linhas_descricao):
-            c.setFont("Helvetica", 9)
+            c.setFont("Helvetica", 9.5)
             c.drawString(x0 + 1 * mm, y + 0.5 * mm, linhas_descricao[i])
         y -= 6 * mm
 
-    # Situação da OS (em branco, preenchido depois manualmente)
-    y -= 3 * mm
-    c.setFont("Helvetica-Bold", 10)
+    # Situação da OS
+    y -= 2 * mm
+    c.setFont("Helvetica-Bold", 10.5)
     c.drawCentredString(LARGURA_VIA / 2, y, "Situação da Ordem de serviço:")
     y -= 8 * mm
 
-    c.setFont("Helvetica", 9.5)
-    _checkbox(c, x0, y, 3.2 * mm)
+    c.setFont("Helvetica", 10)
+    _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Executada")
     y -= 7 * mm
 
-    _checkbox(c, x0, y, 3.2 * mm)
+    _checkbox(c, x0, y, 3.5 * mm)
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Não Executada - Motivo")
-    lx4 = x0 + 5 * mm + c.stringWidth("Não Executada - Motivo", "Helvetica", 9.5) + 2 * mm
+    lx4 = x0 + 5 * mm + c.stringWidth("Não Executada - Motivo", "Helvetica", 10) + 2 * mm
     c.line(lx4, y - 3.8 * mm, x_fim, y - 3.8 * mm)
     y -= 7 * mm
 
     c.drawString(x0 + 5 * mm, y - 2.8 * mm, "Observação:")
-    lx5 = x0 + 5 * mm + c.stringWidth("Observação:", "Helvetica", 9.5) + 2 * mm
+    lx5 = x0 + 5 * mm + c.stringWidth("Observação:", "Helvetica", 10) + 2 * mm
     c.line(lx5, y - 3.8 * mm, x_fim, y - 3.8 * mm)
     y -= 9 * mm
     c.line(x0, y - 1 * mm, x_fim, y - 1 * mm)
@@ -164,14 +174,14 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     largura_assinatura = (LARGURA_VIA - 2 * margem - 16 * mm) / 2
     c.line(x0, y, x0 + largura_assinatura, y)
     c.line(x0 + largura_assinatura + 16 * mm, y, x_fim, y)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont("Helvetica-Bold", 10)
     c.drawCentredString(x0 + largura_assinatura / 2, y - 5 * mm, "Responsável Unidade")
     c.drawCentredString(x0 + largura_assinatura + 16 * mm + largura_assinatura / 2, y - 5 * mm, "Responsável Telemedicina")
 
     # Rodapé
-    c.setFont("Helvetica", 6.8)
+    c.setFont("Helvetica", 7.5)
     c.drawCentredString(
-        LARGURA_VIA / 2, margem + 2 * mm,
+        LARGURA_VIA / 2, margem + 3 * mm,
         "CEMATEL - Central de Manutenção da Telemedicina - Av. Anita Garibaldi, 1555 sl 701, "
         "Centro Médico Garibaldi Tel.: (71) 3331-5414",
     )
