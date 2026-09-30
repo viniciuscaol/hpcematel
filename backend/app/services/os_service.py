@@ -13,7 +13,7 @@ from reportlab.pdfgen import canvas
 
 from app.utils.datas import para_horario_local
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "static", "LOGO_TELEMEDICINA.svg")
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "..", "static", "LOGO_TELEMEDICINA.png")
 
 LARGURA_VIA = 210 * mm   # A5 paisagem
 ALTURA_VIA = 148 * mm
@@ -172,8 +172,8 @@ def _desenhar_via(c, y_offset, chamado, numero_os, data_impressao_str, responsav
     c.setFont("Helvetica", 6.8)
     c.drawCentredString(
         LARGURA_VIA / 2, margem + 2 * mm,
-        "CEMATEL - Central de Manutenção de Telemedicina - Av. Anita Garibaldi, 1555 sl 708, "
-        "Centro Médico Garibaldi tel.: 3331-5414",
+        "CEMATEL - Central de Manutenção da Telemedicina - Av. Anita Garibaldi, 1555 sl 701, "
+        "Centro Médico Garibaldi Tel.: (71) 3331-5414",
     )
 
     c.restoreState()
