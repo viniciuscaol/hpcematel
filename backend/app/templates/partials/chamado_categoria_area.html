@@ -1,9 +1,28 @@
+{% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
+{% if chamado.status.finalizador %}
+<div class="categoria-pills categoria-pills-travadas">
+  {% for categoria in chamado.categorias %}
+  <span class="categoria-pill categoria-pill-marcada categoria-pill-disabled">{{ categoria.nome }}</span>
+  {% endfor %}
+</div>
+<p class="sem-resultado" style="margin-top: 0.35rem;">Categorias travadas (chamado {{ chamado.status.nome|lower }}). Reabra o chamado para editar.</p>
+{% else %}
 <form method="post" action="/chamados/{{ chamado.id }}/categoria" class="categoria-pills" id="categoria-form">
-  {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
   {% for categoria in categorias %}
   <label class="categoria-pill {% if categoria.id in ids_atuais %}categoria-pill-marcada{% endif %}">
-    <input type="checkbox" name="categoria_ids" value="{{ categoria.id }}" {% if categoria.id in ids_atuais %}checked{% endif %} onchange="this.form.requestSubmit()">
+    <input
+      type="checkbox"
+      name="categoria_ids"
+      value="{{ categoria.id }}"
+      {% if categoria.id in ids_atuais %}checked{% endif %}
+      onchange="
+        var marcados = this.form.querySelectorAll('input[name=categoria_ids]:checked').length;
+        if (marcados === 0) { this.checked = true; return; }
+        this.form.requestSubmit();
+      "
+    >
     <span>{{ categoria.nome }}</span>
   </label>
   {% endfor %}
 </form>
+{% endif %}

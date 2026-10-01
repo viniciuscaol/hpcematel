@@ -638,3 +638,6 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 }
 
 .tabela-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.categoria-pill-disabled { cursor: default; opacity: 0.85; }
+.categoria-pills-travadas .categoria-pill { cursor: default; }

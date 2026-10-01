@@ -49,6 +49,7 @@ from app.services.chamado_service import (
 from app.templates_config import templates
 from app.utils.datas import hoje_local
 from app.services.os_service import gerar_pdf_os
+from typing import Annotated
 
 router = APIRouter(prefix="/chamados", tags=["chamados"])
 
@@ -296,10 +297,24 @@ async def alterar_categorias(
     chamado_id: int,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
-    categoria_ids: list[int] = Form(default=[]),
+    categoria_ids: Annotated[list[int], Form()] = [],
 ):
+    chamado_atual = await obter_chamado(db, chamado_id)
+    if chamado_atual is None:
+        return RedirectResponse("/chamados", status_code=303)
+
+    # Categorias ficam travadas quando o chamado está finalizado (Resolvido/
+    # Cancelado) — só volta a poder editar se o chamado for reaberto.
+    if chamado_atual.status.finalizador:
+        return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
+
+    # Segurança extra: nunca aceita lista vazia (evita o 422 que gerava a
+    # tela em branco se o formulário chegasse a ser enviado sem nada marcado).
+    if not categoria_ids:
+        return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
+
     await atualizar_categorias(db, chamado_id, categoria_ids, usuario["codigo"], usuario["nome"])
-    return _redirect_para_chamado(chamado_id)
+    return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
 
 
 @router.post("/{chamado_id}/prioridade")

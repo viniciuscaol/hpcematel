@@ -214,7 +214,13 @@ def gerar_pdf_os(chamado) -> bytes:
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
 
-    data_impressao_str = para_horario_local(datetime.now(timezone.utc)).strftime("%d/%m/%Y")
+    # Se o chamado já foi resolvido, a OS registra a data da resolução
+    # (quando o serviço de fato aconteceu), não a data de hoje.
+    if chamado.resolvido_em:
+        data_impressao_str = para_horario_local(chamado.resolvido_em).strftime("%d/%m/%Y")
+    else:
+        data_impressao_str = para_horario_local(datetime.now(timezone.utc)).strftime("%d/%m/%Y")
+
     categorias_nomes = [cat.nome for cat in chamado.categorias]
     descricao = (chamado.descricao or "").strip()
 
