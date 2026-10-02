@@ -20,9 +20,25 @@ logger = logging.getLogger(__name__)
 USUARIO_SISTEMA_CODIGO = 0
 USUARIO_SISTEMA_NOME = "Sistema (Rastreio Correios)"
 
+def _dentro_da_janela_de_consulta() -> bool:
+    """
+    Consulta a API só entre 7h e 19h (1h antes do início das notificações,
+    8h-19h), para não gastar cota da API fora do horário em que isso
+    realmente importa.
+    """
+    from datetime import datetime
+    from app.utils.datas import FUSO_BAHIA
+
+    agora = datetime.now(FUSO_BAHIA)
+    return 7 <= agora.hour < 19
+
 
 async def verificar_rastreios_e_notificar() -> None:
     if not correios_configurado():
+        return
+
+    if not _dentro_da_janela_de_consulta():
+        logger.info("Fora da janela de consulta de rastreio (7h-19h), pulando ciclo.")
         return
 
     async with HelpdeskSessionLocal() as db:
