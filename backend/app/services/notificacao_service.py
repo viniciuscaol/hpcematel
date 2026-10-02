@@ -162,6 +162,15 @@ async def notificar_atualizacao_rastreio(
     )
     await _enviar(db, mensagem)
 
+    # Versão resumida também para o grupo de gerência
+    if settings.waha_grupo_diretoria_id:
+        mensagem_diretoria = (
+            f"📦 {cliente_nome}\n"
+            f"Solicitação: {titulo}\n"
+            f"Rastreio ({rotulo_tipo}): {descricao_evento}"
+        )
+        await _enviar(db, mensagem_diretoria, chat_id=settings.waha_grupo_diretoria_id)
+
 async def notificar_diretoria(
     db: AsyncSession, cliente_nome: str, titulo: str, status_nome: str,
 ) -> None:
