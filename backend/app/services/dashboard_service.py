@@ -140,18 +140,34 @@ async def top_categorias_geral(db: AsyncSession, limite: int = 10) -> list[dict]
 
 
 async def ranking_tecnicos_por_resolucao(db: AsyncSession, limite: int = 10) -> list[dict]:
-    """Quem mais resolveu chamados, no histórico completo."""
+    """
+    Quem mais resolveu chamados, no histórico completo. Agrupa por
+    responsavel_codigo (estável) e exibe o nome ATUAL do legado — assim,
+    se alguém for renomeado lá, o ranking nunca fica dividido em duas
+    linhas, nem precisa de correção manual de novo no futuro.
+    """
     from app.services.chamado_service import STATUS_RESOLVIDO_ID
+    from app.services.usuario_service import listar_usuarios_helpdesk
 
     result = await db.execute(
-        select(Chamado.responsavel_nome_snapshot, func.count(Chamado.id).label("qtd"))
+        select(Chamado.responsavel_codigo, func.count(Chamado.id).label("qtd"))
         .where(Chamado.excluido.is_(False), Chamado.status_id == STATUS_RESOLVIDO_ID)
-        .where(Chamado.responsavel_nome_snapshot.isnot(None))
-        .group_by(Chamado.responsavel_nome_snapshot)
+        .where(Chamado.responsavel_codigo.isnot(None))
+        .group_by(Chamado.responsavel_codigo)
         .order_by(func.count(Chamado.id).desc())
         .limit(limite)
     )
-    return [{"nome": nome, "quantidade": qtd} for nome, qtd in result.all()]
+    contagem_por_codigo = {codigo: qtd for codigo, qtd in result.all()}
+
+    usuarios = await listar_usuarios_helpdesk()
+    nome_por_codigo = {u["codigo"]: u["nome"] for u in usuarios}
+
+    linhas = [
+        {"nome": nome_por_codigo.get(codigo, f"Usuário #{codigo}"), "quantidade": qtd}
+        for codigo, qtd in contagem_por_codigo.items()
+    ]
+    linhas.sort(key=lambda item: item["quantidade"], reverse=True)
+    return linhas[:limite]
 
 
 async def tempo_medio_resolucao_horas(db: AsyncSession) -> float | None:
