@@ -120,12 +120,15 @@ def _query_base_chamados(
     condicoes = [Chamado.excluido.is_(False)]
     if apenas_abertos:
         condicoes.append(Chamado.status_id.in_(status_abertos_ids))
-    if data_inicio is not None:
-        inicio_utc, _ = intervalo_utc_do_dia(data_inicio)
-        condicoes.append(Chamado.criado_em >= inicio_utc)
-    if data_fim is not None:
-        _, fim_utc = intervalo_utc_do_dia(data_fim)
-        condicoes.append(Chamado.criado_em < fim_utc)
+        # Chamado em aberto sempre aparece, independente do período
+        # selecionado — a data só filtra quando o filtro é "Todos os status".
+    else:
+        if data_inicio is not None:
+            inicio_utc, _ = intervalo_utc_do_dia(data_inicio)
+            condicoes.append(Chamado.criado_em >= inicio_utc)
+        if data_fim is not None:
+            _, fim_utc = intervalo_utc_do_dia(data_fim)
+            condicoes.append(Chamado.criado_em < fim_utc)
     if busca:
         termo = f"%{busca.strip()}%"
         condicoes.append(or_(
