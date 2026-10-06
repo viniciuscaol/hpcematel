@@ -355,11 +355,19 @@ button.htmx-request { opacity: 0.6; cursor: not-allowed; }
 .timeline-item { border-left: 3px solid var(--color-primary); padding: 0.4rem 0 0.4rem 0.9rem; }
 .timeline-item.timeline-historico { border-left-color: #9ca3af; }
 .timeline-meta { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--color-muted); margin-bottom: 0.15rem; }
-.timeline-item p { margin: 0; font-size: 0.9rem; }
+.timeline-item p {
+  margin: 0; font-size: 0.9rem;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
+}
 
 .interacao-form { display: flex; flex-direction: column; gap: 0.5rem; }
 .interacao-form textarea {
-  padding: 0.6rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px; font-family: inherit; font-size: 0.9rem; resize: vertical;
+  padding: 0.6rem 0.75rem; border: 1px solid #d1d5db; border-radius: 6px;
+  font-family: inherit; font-size: 0.9rem; resize: vertical;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 .interacao-form button {
   align-self: flex-end; padding: 0.5rem 1.1rem; background: var(--color-primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;

@@ -7,6 +7,10 @@
   <main class="content">
     <h1>Novo Chamado</h1>
 
+    {% if erro_validacao %}
+    <p class="error-message">{{ erro_validacao }}</p>
+    {% endif %}
+
     <form hx-post="/chamados/novo" hx-target="#form-erro" hx-swap="innerHTML" class="chamado-form">
 
       <label for="cliente_busca">Cliente</label>
@@ -22,9 +26,11 @@
 
       <label for="titulo">Título</label>
       <input type="text" id="titulo" name="titulo" required maxlength="255">
+      <span class="contador-caracteres" id="contador-titulo">0/255</span>
 
       <label for="descricao">Descrição</label>
-      <textarea id="descricao" name="descricao" rows="5"></textarea>
+      <textarea id="descricao" name="descricao" rows="5" maxlength="5000"></textarea>
+      <span class="contador-caracteres" id="contador-descricao">0/5000</span>
 
       <label>Categorias</label>
       <div class="categoria-pills">
@@ -72,6 +78,20 @@
     rastreioDiv.style.display = marcadoCorreios ? 'block' : 'none';
   }
   checkboxes.forEach(function (cb) { cb.addEventListener('change', atualizar); });
+})();
+(function () {
+  function ligarContador(idCampo, idContador) {
+    var campo = document.getElementById(idCampo);
+    var contador = document.getElementById(idContador);
+    if (!campo || !contador) return;
+    function atualizar() {
+      contador.textContent = campo.value.length + "/" + campo.getAttribute("maxlength");
+    }
+    campo.addEventListener("input", atualizar);
+    atualizar();
+  }
+  ligarContador("titulo", "contador-titulo");
+  ligarContador("descricao", "contador-descricao");
 })();
 </script>
 {% endblock %}

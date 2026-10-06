@@ -184,13 +184,25 @@ async def processar_novo_chamado(
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_helpdesk_db),
     cliente_codigo: int = Form(...),
-    titulo: str = Form(..., max_length=255),
-    descricao: str = Form("", max_length=5000),
+    titulo: str = Form(...),
+    descricao: str = Form(""),
     categoria_ids: list[int] = Form(...),
     prioridade_id: int = Form(...),
     responsavel_codigo: int = Form(...),
     codigo_rastreio_envio: str = Form(""),
 ):
+    if len(titulo) > 255 or len(descricao) > 5000:
+        opcoes = await _opcoes_edicao(db)
+        return templates.TemplateResponse(
+            "chamado_novo.html",
+            {
+                "request": request, "usuario": usuario,
+                "categorias": opcoes["categorias"], "prioridades": opcoes["prioridades"],
+                "responsaveis": opcoes["responsaveis"],
+                "erro_validacao": "Título ou descrição ultrapassou o limite de caracteres permitido.",
+            },
+        )
+    
     responsaveis = await listar_responsaveis_possiveis()
     encontrado = next((r for r in responsaveis if r["codigo"] == responsavel_codigo), None)
     responsavel_nome = encontrado["nome"] if encontrado else usuario["nome"]
@@ -303,7 +315,7 @@ async def alterar_categorias(
     chamado_id: int,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
-    categoria_ids: Annotated[list[int], Form()] = [],
+    categoria_ids: Annotated[list[int] | None, Form()] = None,
 ):
     chamado_atual = await obter_chamado(db, chamado_id)
     if chamado_atual is None:
@@ -364,8 +376,26 @@ async def registrar_interacao(
     request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
-    texto: str = Form(..., max_length=3000),
+    texto: str = Form(...),
 ):
+    if len(texto) > 3000:
+        chamado = await obter_chamado(db, chamado_id)
+        opcoes = await _opcoes_edicao(db)
+
+        return templates.TemplateResponse(
+            "chamado_detalhe.html",
+            {
+                "request": request,
+                "usuario": usuario,
+                "chamado": chamado,
+                "status_resolvido_id": STATUS_RESOLVIDO_ID,
+                "categorias": opcoes["categorias"],
+                "prioridades": opcoes["prioridades"],
+                "status_list": opcoes["status_list"],
+                "responsaveis": opcoes["responsaveis"],
+                "erro_validacao": "Interação ultrapassou o limite de caracteres permitido.",
+            },
+        )
     await adicionar_interacao(db, chamado_id, usuario["codigo"], usuario["nome"], texto)
     return _redirect_para_chamado(chamado_id)
 
