@@ -144,7 +144,17 @@
 
         {% if not chamado.excluido %}
         <form hx-post="/chamados/{{ chamado.id }}/interacao" class="interacao-form">
-          <textarea name="texto" rows="3" placeholder="Adicionar comentário ou andamento..." required></textarea>
+          <textarea
+            id="texto-interacao"
+            name="texto"
+            rows="3"
+            maxlength="3000"
+            placeholder="Adicionar comentário ou andamento..."
+            required
+          ></textarea>
+
+          <span class="contador-caracteres" id="contador-interacao">0/3000</span>
+
           <button type="submit" hx-disabled-elt="this">Registrar</button>
         </form>
         {% endif %}
@@ -152,4 +162,25 @@
     </div>
   </main>
 </div>
+
+<script>
+(function () {
+  function ligarContador(idCampo, idContador) {
+    var campo = document.getElementById(idCampo);
+    var contador = document.getElementById(idContador);
+
+    if (!campo || !contador) return;
+
+    function atualizar() {
+      contador.textContent = campo.value.length + "/" + campo.maxLength;
+    }
+
+    campo.addEventListener("input", atualizar);
+    atualizar();
+  }
+
+  ligarContador("texto-interacao", "contador-interacao");
+})();
+</script>
+
 {% endblock %}
