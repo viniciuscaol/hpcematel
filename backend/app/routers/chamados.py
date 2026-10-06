@@ -50,6 +50,7 @@ from app.templates_config import templates
 from app.utils.datas import hoje_local
 from app.services.os_service import gerar_pdf_os
 from typing import Annotated
+from app.routers.auth import limiter
 
 router = APIRouter(prefix="/chamados", tags=["chamados"])
 
@@ -177,13 +178,14 @@ async def tela_novo_chamado(
 
 
 @router.post("/novo")
+@limiter.limit("20/minute")
 async def processar_novo_chamado(
     request: Request,
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_helpdesk_db),
     cliente_codigo: int = Form(...),
-    titulo: str = Form(...),
-    descricao: str = Form(""),
+    titulo: str = Form(..., max_length=255),
+    descricao: str = Form("", max_length=5000),
     categoria_ids: list[int] = Form(...),
     prioridade_id: int = Form(...),
     responsavel_codigo: int = Form(...),
@@ -259,7 +261,9 @@ async def tela_detalhe_chamado(
 
 
 @router.post("/{chamado_id}/status")
+@limiter.limit("30/minute")
 async def alterar_status(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_helpdesk_db),
@@ -293,7 +297,9 @@ async def alterar_status(
 
 
 @router.post("/{chamado_id}/categoria")
+@limiter.limit("30/minute")
 async def alterar_categorias(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
@@ -318,7 +324,9 @@ async def alterar_categorias(
 
 
 @router.post("/{chamado_id}/prioridade")
+@limiter.limit("30/minute")
 async def alterar_prioridade(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
     prioridade_id: int = Form(...),
@@ -328,7 +336,9 @@ async def alterar_prioridade(
 
 
 @router.post("/{chamado_id}/responsavel")
+@limiter.limit("30/minute")
 async def alterar_responsavel(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
     responsavel_codigo: int | None = Form(None),
@@ -349,17 +359,21 @@ async def alterar_responsavel(
 
 
 @router.post("/{chamado_id}/interacao")
+@limiter.limit("30/minute")
 async def registrar_interacao(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
-    texto: str = Form(...),
+    texto: str = Form(..., max_length=3000),
 ):
     await adicionar_interacao(db, chamado_id, usuario["codigo"], usuario["nome"], texto)
     return _redirect_para_chamado(chamado_id)
 
 
 @router.post("/{chamado_id}/excluir")
+@limiter.limit("10/minute")
 async def excluir(
+    request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user),
     db: AsyncSession = Depends(get_helpdesk_db),
@@ -371,6 +385,7 @@ async def excluir(
 
 
 @router.post("/{chamado_id}/anexos")
+@limiter.limit("10/minute")
 async def upload_anexo(
     chamado_id: int,
     request: Request,

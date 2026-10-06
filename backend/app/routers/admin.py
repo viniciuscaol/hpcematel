@@ -15,6 +15,7 @@ from app.models.chamado import Categoria, Prioridade, Status
 from app.services.chamado_service import listar_responsaveis_possiveis
 from app.services.contato_service import PAPEL_ADMIN, PAPEL_CAC, PAPEL_TECNICO, PAPEIS_VALIDOS, listar_contatos, salvar_contato
 from app.templates_config import templates
+from app.routers.auth import limiter
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -37,8 +38,10 @@ async def listar_categorias(
 
 
 @router.post("/categorias")
+@limiter.limit("20/minute")
 async def criar_categoria(
-    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db), nome: str = Form(...),
+    request: Request,
+    usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db), nome: str = Form(..., max_length=100),
 ):
     db.add(Categoria(nome=nome.strip(), ativo=True))
     await db.commit()
@@ -69,9 +72,11 @@ async def listar_prioridades(
 
 
 @router.post("/prioridades")
+@limiter.limit("20/minute")
 async def criar_prioridade(
+    request: Request,
     usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
-    nome: str = Form(...), ordem: int = Form(...), cor: str = Form(...), sla_horas: int = Form(...),
+    nome: str = Form(..., max_length=50), ordem: int = Form(...), cor: str = Form(...), sla_horas: int = Form(...),
 ):
     db.add(Prioridade(nome=nome.strip(), ordem=ordem, cor=cor, sla_horas=sla_horas, ativo=True))
     await db.commit()
@@ -79,7 +84,9 @@ async def criar_prioridade(
 
 
 @router.post("/prioridades/{prioridade_id}/editar")
+@limiter.limit("20/minute")
 async def editar_prioridade(
+    request: Request,
     prioridade_id: int, usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)), db: AsyncSession = Depends(get_helpdesk_db),
     sla_horas: int = Form(...), cor: str = Form(...),
 ):
@@ -153,12 +160,14 @@ async def listar_contatos_admin(
 
 
 @router.post("/contatos/{usuario_codigo}")
+@limiter.limit("20/minute")
 async def salvar_contato_admin(
+    request: Request,
     usuario_codigo: int,
     usuario: dict = Depends(exigir_papel(PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
-    nome: str = Form(...),
-    whatsapp_numero: str = Form(""),
+    nome: str = Form(..., max_length=255),
+    whatsapp_numero: str = Form("", max_length=20),
     papel: str = Form(PAPEL_CAC),
 ):
     await salvar_contato(db, usuario_codigo, nome, whatsapp_numero or None, papel)
