@@ -376,26 +376,8 @@ async def registrar_interacao(
     request: Request,
     chamado_id: int,
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
-    texto: str = Form(...),
+    texto: str = Form(..., max_length=3000),
 ):
-    if len(texto) > 3000:
-        chamado = await obter_chamado(db, chamado_id)
-        opcoes = await _opcoes_edicao(db)
-
-        return templates.TemplateResponse(
-            "chamado_detalhe.html",
-            {
-                "request": request,
-                "usuario": usuario,
-                "chamado": chamado,
-                "status_resolvido_id": STATUS_RESOLVIDO_ID,
-                "categorias": opcoes["categorias"],
-                "prioridades": opcoes["prioridades"],
-                "status_list": opcoes["status_list"],
-                "responsaveis": opcoes["responsaveis"],
-                "erro_validacao": "Interação ultrapassou o limite de caracteres permitido.",
-            },
-        )
     await adicionar_interacao(db, chamado_id, usuario["codigo"], usuario["nome"], texto)
     return _redirect_para_chamado(chamado_id)
 
