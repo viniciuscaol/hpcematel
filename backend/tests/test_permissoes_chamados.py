@@ -112,3 +112,14 @@ async def test_assumir_exige_tecnico_ou_admin(client, contexto, monkeypatch, pap
 
     assert resposta.status_code == esperado
     assert executar.await_count == (0 if esperado == 403 else 1)
+
+
+@pytest.mark.parametrize("acao,dados,servico", [ACOES[0], ACOES[2]])
+async def test_opcao_invalida_retorna_422_em_vez_de_500(client, contexto, monkeypatch, acao, dados, servico):
+    autenticar(client)
+    executar = AsyncMock(side_effect=chamados.OpcaoChamadoInvalida("Opção indisponível."))
+    monkeypatch.setattr(chamados, servico, executar)
+    resposta = await enviar(client, acao, dados)
+    assert resposta.status_code == 422
+    assert resposta.json()["detail"] == "Opção indisponível."
+    contexto.db.commit.assert_not_awaited()

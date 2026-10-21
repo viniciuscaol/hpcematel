@@ -61,8 +61,9 @@ check e pull request; a existência do workflow, sozinha, não impõe a regra.
 - [Deploy](docs/DEPLOY.md)
 - [Segurança e resposta à exposição de dados](docs/SEGURANCA.md)
 
-Próximas etapas de melhoria: consistência do SLA ao pausar/reabrir/trocar
-prioridade; fila confiável de notificações; concorrência ao assumir chamados;
+Regras atuais do SLA e validação: [SLA](docs/SLA.md).
+
+Próximas etapas de melhoria: fila confiável de notificações; concorrência ao assumir chamados;
 readiness do banco; restauração conjunta de banco e anexos; alertas e rollback.
 O scheduler ainda roda dentro da API: não aumentar réplicas sem tratar a
 execução duplicada de tarefas.

@@ -8,17 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.chamado import Categoria, Chamado, Prioridade, Status, chamado_categoria
-from app.services.chamado_service import aplicar_status_sla
+from app.services.chamado_service import STATUS_RESOLVIDO_ID, aplicar_status_sla
 
 
 async def _status_abertos_ids(db: AsyncSession) -> list[int]:
     result = await db.execute(select(Status.id).where(Status.finalizador.is_(False)))
     return list(result.scalars().all())
-
-
-async def _status_finalizadores(db: AsyncSession) -> set[int]:
-    result = await db.execute(select(Status.id).where(Status.finalizador.is_(True)))
-    return set(result.scalars().all())
 
 
 async def contagem_por_status(db: AsyncSession) -> list[dict]:
@@ -85,13 +80,13 @@ async def contar_meus_chamados(db: AsyncSession, usuario_codigo: int) -> int:
 
 
 async def contar_sla_estourado(db: AsyncSession) -> int:
-    finalizadores = await _status_finalizadores(db)
     agora = datetime.now(timezone.utc)
     result = await db.execute(
         select(func.count(Chamado.id))
+        .join(Status, Status.id == Chamado.status_id)
         .where(Chamado.excluido.is_(False))
-        .where(Chamado.status_id.notin_(finalizadores))
-        .where(Chamado.prazo_sla < agora)
+        .where(Status.finalizador.is_(False), Status.pausa_sla.is_(False))
+        .where(Chamado.prazo_sla <= agora)
     )
     return result.scalar_one()
 
@@ -174,7 +169,7 @@ async def tempo_medio_resolucao_horas(db: AsyncSession) -> float | None:
     """Média de horas entre a criação e a resolução, no histórico completo."""
     result = await db.execute(
         select(func.avg(func.extract("epoch", Chamado.resolvido_em - Chamado.criado_em) / 3600.0))
-        .where(Chamado.excluido.is_(False), Chamado.resolvido_em.isnot(None))
+        .where(Chamado.excluido.is_(False), Chamado.status_id == STATUS_RESOLVIDO_ID, Chamado.resolvido_em.isnot(None))
     )
     media = result.scalar_one_or_none()
     return round(media, 1) if media is not None else None
@@ -203,7 +198,7 @@ async def percentual_sla_cumprido(db: AsyncSession) -> dict:
     """De tudo que já foi resolvido, quanto foi dentro do prazo vs. estourado."""
     result = await db.execute(
         select(Chamado.resolvido_em, Chamado.prazo_sla)
-        .where(Chamado.excluido.is_(False), Chamado.resolvido_em.isnot(None))
+        .where(Chamado.excluido.is_(False), Chamado.status_id == STATUS_RESOLVIDO_ID, Chamado.resolvido_em.isnot(None))
     )
     linhas = result.all()
     total = len(linhas)
