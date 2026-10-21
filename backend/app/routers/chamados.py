@@ -12,7 +12,7 @@ import math
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, File, Form, Request, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse, Response as PDFResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,6 +53,19 @@ from typing import Annotated
 from app.routers.auth import limiter
 
 router = APIRouter(prefix="/chamados", tags=["chamados"])
+
+
+async def _exigir_chamado_editavel(
+    chamado_id: int,
+    usuario: dict = Depends(get_current_user),
+    db: AsyncSession = Depends(get_helpdesk_db),
+):
+    """A exclusão lógica mantém o histórico, mas bloqueia novas alterações."""
+    chamado = await obter_chamado(db, chamado_id)
+    if chamado is None:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado.")
+    if chamado.excluido:
+        raise HTTPException(status_code=409, detail="Chamado excluído não pode ser alterado.")
 
 
 def _redirect_para_chamado(chamado_id: int) -> Response:
@@ -272,7 +285,7 @@ async def tela_detalhe_chamado(
     )
 
 
-@router.post("/{chamado_id}/status")
+@router.post("/{chamado_id}/status", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("30/minute")
 async def alterar_status(
     request: Request,
@@ -308,7 +321,7 @@ async def alterar_status(
     return _redirect_para_chamado(chamado_id)
 
 
-@router.post("/{chamado_id}/categoria")
+@router.post("/{chamado_id}/categoria", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("30/minute")
 async def alterar_categorias(
     request: Request,
@@ -335,7 +348,7 @@ async def alterar_categorias(
     return RedirectResponse(f"/chamados/{chamado_id}", status_code=303)
 
 
-@router.post("/{chamado_id}/prioridade")
+@router.post("/{chamado_id}/prioridade", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("30/minute")
 async def alterar_prioridade(
     request: Request,
@@ -347,7 +360,7 @@ async def alterar_prioridade(
     return _redirect_para_chamado(chamado_id)
 
 
-@router.post("/{chamado_id}/responsavel")
+@router.post("/{chamado_id}/responsavel", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("30/minute")
 async def alterar_responsavel(
     request: Request,
@@ -370,7 +383,7 @@ async def alterar_responsavel(
     return _redirect_para_chamado(chamado_id)
 
 
-@router.post("/{chamado_id}/interacao")
+@router.post("/{chamado_id}/interacao", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("30/minute")
 async def registrar_interacao(
     request: Request,
@@ -382,12 +395,12 @@ async def registrar_interacao(
     return _redirect_para_chamado(chamado_id)
 
 
-@router.post("/{chamado_id}/excluir")
+@router.post("/{chamado_id}/excluir", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("10/minute")
 async def excluir(
     request: Request,
     chamado_id: int,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     await excluir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
@@ -396,12 +409,12 @@ async def excluir(
     return resposta
 
 
-@router.post("/{chamado_id}/anexos")
+@router.post("/{chamado_id}/anexos", dependencies=[Depends(_exigir_chamado_editavel)])
 @limiter.limit("10/minute")
 async def upload_anexo(
     chamado_id: int,
     request: Request,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(get_current_user_com_papel),
     db: AsyncSession = Depends(get_helpdesk_db),
     arquivo: UploadFile = File(...),
 ):
@@ -417,7 +430,7 @@ async def upload_anexo(
             "chamado_detalhe.html",
             {
                 "request": request, "usuario": usuario, "chamado": chamado,
-                "erro_anexo": str(erro), **opcoes,
+                "erro_anexo": str(erro), "status_resolvido_id": STATUS_RESOLVIDO_ID, **opcoes,
             },
         )
 
@@ -425,11 +438,11 @@ async def upload_anexo(
     await db.commit()
     return _redirect_para_chamado(chamado_id)
 
-@router.post("/{chamado_id}/anexos/{anexo_id}/excluir")
+@router.post("/{chamado_id}/anexos/{anexo_id}/excluir", dependencies=[Depends(_exigir_chamado_editavel)])
 async def excluir_anexo_rota(
     chamado_id: int,
     anexo_id: int,
-    usuario: dict = Depends(get_current_user),
+    usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
     await excluir_anexo(db, chamado_id, anexo_id, usuario["codigo"], usuario["nome"])
@@ -450,7 +463,7 @@ async def baixar_anexo(
     caminho = caminho_fisico_anexo(chamado_id, anexo.nome_armazenado)
     return FileResponse(caminho, filename=anexo.nome_original, media_type=anexo.tipo_mime)
 
-@router.post("/{chamado_id}/assumir")
+@router.post("/{chamado_id}/assumir", dependencies=[Depends(_exigir_chamado_editavel)])
 async def assumir(
     chamado_id: int,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
@@ -459,7 +472,7 @@ async def assumir(
     await assumir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
     return _redirect_para_chamado(chamado_id)
 
-@router.post("/{chamado_id}/rastreio")
+@router.post("/{chamado_id}/rastreio", dependencies=[Depends(_exigir_chamado_editavel)])
 async def salvar_rastreio_rota(
     chamado_id: int,
     usuario: dict = Depends(get_current_user),

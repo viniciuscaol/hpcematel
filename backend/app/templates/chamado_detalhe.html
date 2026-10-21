@@ -37,7 +37,7 @@
         <div class="campo-linha">
           <strong>Prioridade:</strong>
           <form hx-post="/chamados/{{ chamado.id }}/prioridade" class="campo-editavel">
-            <select name="prioridade_id" onchange="this.form.requestSubmit()">
+            <select name="prioridade_id" onchange="this.form.requestSubmit()" {% if chamado.excluido %}disabled{% endif %}>
               {% for prioridade in prioridades %}
               <option value="{{ prioridade.id }}" {% if prioridade.id == chamado.prioridade_id %}selected{% endif %}>{{ prioridade.nome }}</option>
               {% endfor %}
@@ -49,7 +49,7 @@
         <div class="campo-linha">
           <strong>Responsável:</strong>
           <form hx-post="/chamados/{{ chamado.id }}/responsavel" class="campo-editavel">
-            <select name="responsavel_codigo" onchange="this.form.requestSubmit()">
+            <select name="responsavel_codigo" onchange="this.form.requestSubmit()" {% if chamado.excluido %}disabled{% endif %}>
               <option value="">Não atribuído</option>
               {% for resp in responsaveis %}
               <option value="{{ resp.codigo }}" {% if resp.codigo == chamado.responsavel_codigo %}selected{% endif %}>{{ resp.nome }}</option>
@@ -129,7 +129,7 @@
         </form>
         {% endif %}
 
-        {% if not chamado.excluido %}
+        {% if not chamado.excluido and usuario.papel in ['TECNICO', 'ADMIN'] %}
         <form hx-post="/chamados/{{ chamado.id }}/excluir" hx-confirm="Tem certeza que deseja excluir este chamado? O registro será mantido para histórico, mas ele deixará de aparecer nas listagens.">
           <button type="submit" class="button-danger">Excluir chamado</button>
         </form>

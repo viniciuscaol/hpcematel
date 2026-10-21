@@ -9,6 +9,8 @@ from sqlalchemy import select
 from app.database.helpdesk_db import HelpdeskSessionLocal
 from app.models.chamado import Categoria, Prioridade, Status
 
+pytestmark = [pytest.mark.integration, pytest.mark.usefixtures("aplicar_migracoes")]
+
 
 async def test_tabelas_basicas_existem_e_estao_populadas():
     async with HelpdeskSessionLocal() as db:

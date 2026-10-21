@@ -1,11 +1,13 @@
 {% set ids_atuais = chamado.categorias | map(attribute='id') | list %}
-{% if chamado.status.finalizador %}
+{% if chamado.status.finalizador or chamado.excluido or usuario.papel not in ['TECNICO', 'ADMIN'] %}
 <div class="categoria-pills categoria-pills-travadas">
   {% for categoria in chamado.categorias %}
   <span class="categoria-pill categoria-pill-marcada categoria-pill-disabled">{{ categoria.nome }}</span>
   {% endfor %}
 </div>
+{% if chamado.status.finalizador and not chamado.excluido %}
 <p class="sem-resultado" style="margin-top: 0.35rem;">Categorias travadas (chamado {{ chamado.status.nome|lower }}). Reabra o chamado para editar.</p>
+{% endif %}
 {% else %}
 <form method="post" action="/chamados/{{ chamado.id }}/categoria" class="categoria-pills" id="categoria-form">
   {% for categoria in categorias %}
