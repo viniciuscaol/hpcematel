@@ -1,12 +1,12 @@
 """
 Envio de notificações para o WhatsApp via WAHA.
 
-Só envia entre 8h e 19h (horário de Bahia). Fora desse horário, a
-mensagem fica guardada em NotificacaoPendente e é enviada assim que o
-horário permitido chegar, com o horário original registrado no texto.
+Mensagens entram na fila dentro da transação do chamador. Somente o
+processador da fila acessa o WAHA, entre 8h e 19h (horário de Bahia).
+Falhas permanecem no banco e são tentadas novamente com intervalo crescente.
 """
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from sqlalchemy import select
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 HORA_INICIO_PERMITIDA = 8
 HORA_FIM_PERMITIDA = 19
+TAMANHO_LOTE = 20
 
 
 def _dentro_do_horario() -> bool:
@@ -35,48 +36,59 @@ def _rotulo_cidade(cidade: str | None) -> str | None:
     return cidade.split("/")[0].strip().title()
 
 
-async def _enviar(db: AsyncSession, mensagem: str, chat_id: str | None = None) -> None:
+async def _enviar(db: AsyncSession, mensagem: str, chat_id: str | None = None) -> bool:
+    """Enfileira sem commit: o chamador confirma junto com a alteração de negócio."""
     chat_id = chat_id or settings.waha_grupo_id
-    if not settings.waha_api_key or not chat_id:
-        logger.info("WAHA não configurado, pulando notificação.")
-        return
+    if not chat_id:
+        logger.warning("Notificação não enfileirada: destino WhatsApp não configurado.")
+        return False
 
     if not _dentro_do_horario():
         agora = datetime.now(FUSO_BAHIA)
-        mensagem_com_hora = (
+        mensagem = (
             f"{mensagem}\n\n_(ocorrido às {agora.strftime('%d/%m %H:%M')}, "
             f"fora do horário de notificações)_"
         )
-        db.add(NotificacaoPendente(chat_id=chat_id, mensagem=mensagem_com_hora))
-        await db.commit()
-        return
+    db.add(NotificacaoPendente(chat_id=chat_id, mensagem=mensagem))
+    await db.flush()
+    return True
 
-    url = f"{settings.waha_api_url}/api/sendText"
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            resposta = await client.post(
-                url,
-                headers={"X-Api-Key": settings.waha_api_key},
-                json={"session": settings.waha_sessao, "chatId": chat_id, "text": mensagem},
-            )
-            resposta.raise_for_status()
-    except Exception:
-        logger.exception("Falha ao enviar notificação para o WhatsApp.")
+
+def _resumir_erro(erro: Exception) -> str:
+    # Não persiste corpo de resposta, mensagem, URL ou credenciais no erro.
+    if isinstance(erro, httpx.HTTPStatusError):
+        return f"HTTP {erro.response.status_code}"
+    if isinstance(erro, httpx.TimeoutException):
+        return "Timeout no WAHA"
+    if isinstance(erro, httpx.RequestError):
+        return "Falha de conexão com WAHA"
+    return type(erro).__name__[:120]
 
 
 async def processar_fila_notificacoes(db: AsyncSession) -> None:
-    """Envia as mensagens que ficaram na fila, se já estivermos no horário permitido."""
-    if not _dentro_do_horario():
-        return
-
-    result = await db.execute(select(NotificacaoPendente).order_by(NotificacaoPendente.criado_em))
-    pendentes = list(result.scalars().all())
-    if not pendentes:
+    """Usa sessão própria e confirma cada item; SKIP LOCKED evita envio concorrente."""
+    if not _dentro_do_horario() or not settings.waha_api_key:
         return
 
     url = f"{settings.waha_api_url}/api/sendText"
     async with httpx.AsyncClient(timeout=10.0) as client:
-        for pendente in pendentes:
+        for _ in range(TAMANHO_LOTE):
+            if not _dentro_do_horario():
+                break
+            result = await db.execute(
+                select(NotificacaoPendente)
+                .where(NotificacaoPendente.proxima_tentativa_em <= datetime.now(timezone.utc))
+                .order_by(NotificacaoPendente.criado_em, NotificacaoPendente.id)
+                .with_for_update(skip_locked=True)
+                .execution_options(populate_existing=True)
+                .limit(1)
+            )
+            pendente = result.scalar_one_or_none()
+            if pendente is None:
+                await db.commit()
+                break
+            pendente.tentativas += 1
+            pendente.ultima_tentativa_em = datetime.now(timezone.utc)
             try:
                 resposta = await client.post(
                     url,
@@ -84,10 +96,16 @@ async def processar_fila_notificacoes(db: AsyncSession) -> None:
                     json={"session": settings.waha_sessao, "chatId": pendente.chat_id, "text": pendente.mensagem},
                 )
                 resposta.raise_for_status()
+            except Exception as erro:
+                pendente.ultimo_erro = _resumir_erro(erro)
+                minutos = min(2 ** min(pendente.tentativas - 1, 5), 30)
+                pendente.proxima_tentativa_em = datetime.now(timezone.utc) + timedelta(minutes=minutos)
+                logger.warning("Notificação %s falhou na tentativa %s: %s", pendente.id, pendente.tentativas, pendente.ultimo_erro)
+            else:
                 await db.delete(pendente)
-            except Exception:
-                logger.exception("Falha ao reenviar notificação pendente %s", pendente.id)
-    await db.commit()
+            # Um envio bem-sucedido não depende de processar o restante do lote.
+            # Se este commit falhar após o WAHA aceitar, o reenvio pode duplicar.
+            await db.commit()
 
 
 def _link(chamado_id: int) -> str:
@@ -119,7 +137,7 @@ async def notificar_mudanca_status(
 async def notificar_alerta_sla(
     db: AsyncSession, chamado_id: int, cliente_nome: str, titulo: str, numero_chamado: str,
     sla_status: str, responsavel_nome: str | None,
-) -> None:
+) -> bool:
     if sla_status == "estourado":
         emoji, rotulo = "🔴", "SLA ESTOURADO"
     else:
@@ -128,7 +146,7 @@ async def notificar_alerta_sla(
         f"{emoji} *{rotulo}*\n{cliente_nome} — {titulo}\n\n"
         f"Nº: {numero_chamado}\nResponsável: {responsavel_nome or 'Não atribuído'}\n\n🔗 {_link(chamado_id)}"
     )
-    await _enviar(db, mensagem)
+    return await _enviar(db, mensagem)
 
 
 async def notificar_atribuicao_individual(

@@ -94,8 +94,8 @@ class Chamado(Base):
     excluido_por_codigo: Mapped[int | None] = mapped_column(Integer)
     excluido_por_nome_snapshot: Mapped[str | None] = mapped_column(String(255))
 
-     # Guarda o último estado de SLA já notificado ("proximo"/"estourado"),
-    # para o monitor periódico não avisar o mesmo alerta repetidas vezes.
+    # Guarda o último estado de SLA enfileirado ("proximo"/"estourado").
+    # Não representa confirmação de entrega pelo WhatsApp.
     sla_notificado_status: Mapped[str | None] = mapped_column(String(20))
     
     prazo_sla: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
@@ -222,11 +222,14 @@ class ChamadoRastreio(Base):
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 class NotificacaoPendente(Base):
-    """Mensagens de WhatsApp que caíram fora do horário permitido (8h-19h)
-    e ficam guardadas aqui até o próximo horário válido."""
+    """Fila persistente de WhatsApp, com tentativas e agendamento de reenvio."""
     __tablename__ = "notificacao_pendente"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     chat_id: Mapped[str] = mapped_column(String(50), nullable=False)
     mensagem: Mapped[str] = mapped_column(Text, nullable=False)
     criado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    tentativas: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    ultima_tentativa_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    proxima_tentativa_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
+    ultimo_erro: Mapped[str | None] = mapped_column(String(120))
