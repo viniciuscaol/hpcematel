@@ -31,6 +31,7 @@ from app.services.chamado_service import (
     assumir_chamado,
     listar_chamados_para_assumir,
     ClienteNaoEncontrado,
+    OpcaoChamadoInvalida,
     adicionar_interacao,
     atualizar_categorias,
     atualizar_prioridade,
@@ -233,6 +234,8 @@ async def processar_novo_chamado(
             "partials/form_erro.html",
             {"request": request, "mensagem": "Cliente selecionado não foi encontrado."},
         )
+    except OpcaoChamadoInvalida as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
 
     chamado = await obter_chamado(db, chamado.id)
 
@@ -307,7 +310,10 @@ async def alterar_status(
     latitude_num = _para_float_ou_none(latitude)
     longitude_num = _para_float_ou_none(longitude)
 
-    chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude_num, longitude_num)
+    try:
+        chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude_num, longitude_num)
+    except OpcaoChamadoInvalida as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
 
     if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
@@ -356,7 +362,10 @@ async def alterar_prioridade(
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
     prioridade_id: int = Form(...),
 ):
-    await atualizar_prioridade(db, chamado_id, prioridade_id, usuario["codigo"], usuario["nome"])
+    try:
+        await atualizar_prioridade(db, chamado_id, prioridade_id, usuario["codigo"], usuario["nome"])
+    except OpcaoChamadoInvalida as erro:
+        raise HTTPException(status_code=422, detail=str(erro)) from erro
     return _redirect_para_chamado(chamado_id)
 
 

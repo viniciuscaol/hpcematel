@@ -24,6 +24,9 @@
         <p>Removeu o anexo: {{ evento.de }}</p>
       {% elif evento.campo == "rastreio" %}
         <p>📦 {{ evento.para }}</p>
+      {% elif evento.campo == "fechamento_anterior" %}
+        {% set resumo_fechamento = evento.de if usuario.papel == 'ADMIN' else evento.de.split('; Local:')[0] %}
+        <p>Fechamento anterior: {{ resumo_fechamento }}. Novo status: {{ evento.para }}.</p>
       {% else %}
         <p>Alterou <strong>{{ evento.campo }}</strong>: {{ evento.de or "-" }} &rarr; {{ evento.para }}</p>
       {% endif %}

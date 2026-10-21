@@ -29,6 +29,17 @@ class ClienteNaoEncontrado(Exception):
     pass
 
 
+class OpcaoChamadoInvalida(ValueError):
+    """Status/prioridade inexistente ou indisponível para novas alterações."""
+
+
+async def _obter_prioridade_valida(db: AsyncSession, prioridade_id: int) -> Prioridade:
+    prioridade = await db.get(Prioridade, prioridade_id)
+    if prioridade is None or not prioridade.ativo or prioridade.sla_horas <= 0:
+        raise OpcaoChamadoInvalida("Prioridade inexistente, inativa ou com SLA inválido.")
+    return prioridade
+
+
 async def _status_finalizadores(db: AsyncSession) -> set[int]:
     result = await db.execute(select(Status.id).where(Status.finalizador.is_(True)))
     return set(result.scalars().all())
@@ -73,7 +84,7 @@ async def criar_chamado(
     if cliente is None:
         raise ClienteNaoEncontrado()
 
-    prioridade = await db.get(Prioridade, prioridade_id)
+    prioridade = await _obter_prioridade_valida(db, prioridade_id)
     agora = datetime.now(timezone.utc)
     data_local = para_horario_local(agora).date()
     numero_chamado = await _proximo_numero_chamado(db, data_local)
@@ -200,11 +211,14 @@ async def atualizar_status(
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
+
+    status_novo = await db.get(Status, novo_status_id)
+    if status_novo is None or not status_novo.ativo:
+        raise OpcaoChamadoInvalida("Status inexistente ou inativo.")
     if chamado.status_id == novo_status_id:
         return chamado
 
     status_anterior = await db.get(Status, chamado.status_id)
-    status_novo = await db.get(Status, novo_status_id)
     agora = datetime.now(timezone.utc)
 
     if status_novo.pausa_sla and not status_anterior.pausa_sla:
@@ -213,15 +227,36 @@ async def atualizar_status(
         chamado.prazo_sla = chamado.prazo_sla + (agora - chamado.sla_pausado_em)
         chamado.sla_pausado_em = None
 
+    # Preserva o fechamento anterior no histórico antes de atualizar o estado
+    # corrente. Reabertura mantém o prazo existente, sem conceder novo SLA.
+    if status_anterior.finalizador:
+        dados = [status_anterior.nome]
+        for rotulo, data in (("Resolvido em", chamado.resolvido_em), ("Cancelado em", chamado.encerrado_em)):
+            if data is not None:
+                dados.append(f"{rotulo}: {para_horario_local(data).strftime('%d/%m/%Y %H:%M:%S')}")
+        if chamado.fechado_latitude is not None and chamado.fechado_longitude is not None:
+            dados.append(f"Local: {chamado.fechado_latitude}, {chamado.fechado_longitude}")
+        db.add(ChamadoHistorico(
+            chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
+            campo_alterado="fechamento_anterior", valor_anterior="; ".join(dados), valor_novo=status_novo.nome,
+        ))
+
     chamado.status_id = novo_status_id
+    chamado.resolvido_em = None
+    chamado.encerrado_em = None
+    chamado.fechado_latitude = None
+    chamado.fechado_longitude = None
     if status_novo.finalizador:
-        if novo_status_id == STATUS_RESOLVIDO_ID and chamado.resolvido_em is None:
+        if novo_status_id == STATUS_RESOLVIDO_ID:
             chamado.resolvido_em = agora
             if latitude is not None and longitude is not None:
                 chamado.fechado_latitude = latitude
                 chamado.fechado_longitude = longitude
-        if novo_status_id == STATUS_CANCELADO_ID and chamado.encerrado_em is None:
+        if novo_status_id == STATUS_CANCELADO_ID:
             chamado.encerrado_em = agora
+
+    if status_anterior.finalizador and not status_novo.finalizador:
+        chamado.sla_notificado_status = None
 
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
@@ -264,7 +299,7 @@ async def atualizar_prioridade(db, chamado_id, nova_prioridade_id, usuario_codig
     if chamado.prioridade_id == nova_prioridade_id:
         return chamado
     prioridade_anterior = await db.get(Prioridade, chamado.prioridade_id)
-    prioridade_nova = await db.get(Prioridade, nova_prioridade_id)
+    prioridade_nova = await _obter_prioridade_valida(db, nova_prioridade_id)
     chamado.prioridade_id = nova_prioridade_id
     db.add(ChamadoHistorico(
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
