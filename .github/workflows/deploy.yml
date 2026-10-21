@@ -73,14 +73,14 @@ jobs:
   deploy-homologacao:
     needs: build
     runs-on: self-hosted
+    timeout-minutes: 20
     steps:
+      - uses: actions/checkout@v4
       - name: Migrar banco de homologação
         run: |
-          kubectl run helpdesk-migrate-homolog-${{ github.run_id }} --rm -i --restart=Never \
-            --namespace chamados-cematel-homolog \
-            --image=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} \
-            --image-pull-policy=Always \
-            --overrides='{"spec":{"containers":[{"name":"migrate","image":"${{ env.IMAGE }}:${{ needs.build.outputs.tag }}","command":["alembic","upgrade","head"],"envFrom":[{"configMapRef":{"name":"helpdesk-config"}},{"secretRef":{"name":"helpdesk-secrets"}}]}]}}'
+          bash scripts/migrate.sh chamados-cematel-homolog \
+            "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
+            "helpdesk-migrate-homolog-${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Deploy em homologação
         run: |
           kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel-homolog
@@ -89,16 +89,16 @@ jobs:
   deploy-producao:
     needs: [build, deploy-homologacao]
     runs-on: self-hosted
+    timeout-minutes: 20
     environment:
       name: producao
     steps:
+      - uses: actions/checkout@v4
       - name: Migrar banco de produção
         run: |
-          kubectl run helpdesk-migrate-prod-${{ github.run_id }} --rm -i --restart=Never \
-            --namespace chamados-cematel \
-            --image=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} \
-            --image-pull-policy=Always \
-            --overrides='{"spec":{"containers":[{"name":"migrate","image":"${{ env.IMAGE }}:${{ needs.build.outputs.tag }}","command":["alembic","upgrade","head"],"envFrom":[{"configMapRef":{"name":"helpdesk-config"}},{"secretRef":{"name":"helpdesk-secrets"}}]}]}}'
+          bash scripts/migrate.sh chamados-cematel \
+            "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
+            "helpdesk-migrate-prod-${{ github.run_id }}-${{ github.run_attempt }}"
       - name: Deploy em produção
         run: |
           kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel
