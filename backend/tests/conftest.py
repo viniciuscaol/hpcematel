@@ -1,8 +1,8 @@
 """
 Configuração compartilhada dos testes. Define as variáveis de ambiente
 ANTES de qualquer módulo da aplicação ser importado (o config.py lê o
-ambiente no momento do import), aplica as migrações do Alembic contra
-um Postgres de teste, e disponibiliza um AsyncClient para testar rotas.
+ambiente no momento do import), disponibiliza as migrações do Alembic
+para os testes de integração e um AsyncClient para testar rotas.
 """
 import os
 import subprocess
@@ -16,7 +16,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def aplicar_migracoes():
     """Roda `alembic upgrade head` uma única vez, no início da sessão de testes."""
     subprocess.run(["alembic", "upgrade", "head"], check=True, cwd=os.path.dirname(os.path.dirname(__file__)))

@@ -1,5 +1,5 @@
 <form hx-post="/chamados/{{ chamado.id }}/status" class="status-form" id="status-form">
-  <select name="status_id" id="status-select">
+  <select name="status_id" id="status-select" {% if chamado.excluido %}disabled{% endif %}>
     {% for status in status_list %}
     <option value="{{ status.id }}" {% if status.id == chamado.status_id %}selected{% endif %}>{{ status.nome }}</option>
     {% endfor %}

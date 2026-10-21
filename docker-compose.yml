@@ -46,6 +46,8 @@ services:
       WAHA_API_KEY: ${WAHA_API_KEY}
       WAHA_SESSAO: default
       WAHA_GRUPO_ID: ${WAHA_GRUPO_ID}
+      WAHA_GRUPO_DIRETORIA_ID: ${WAHA_GRUPO_DIRETORIA_ID:-}
+      PACOTEVICIO_API_KEY: ${PACOTEVICIO_API_KEY:-}
     volumes:
       - ./backend/migrations:/app/migrations
       - ./data/anexos:/app/anexos

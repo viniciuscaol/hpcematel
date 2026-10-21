@@ -7,3 +7,14 @@ qr*
 Token*
 grupo
 proximochat
+
+# Dados de execução e credenciais nunca devem ser versionados.
+cookies*.txt
+grupo.txt
+data/anexos/
+*.dump
+*.backup
+.pytest_cache/
+.coverage
+htmlcov/
+k8s/waha-secret.yaml
