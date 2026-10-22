@@ -228,6 +228,7 @@ async def processar_novo_chamado(
             categoria_ids=categoria_ids, prioridade_id=prioridade_id,
             responsavel_codigo=responsavel_codigo, responsavel_nome=responsavel_nome,
             criado_por_codigo=usuario["codigo"], criado_por_nome=usuario["nome"],
+            commit=False,
         )
     except ClienteNaoEncontrado:
         return templates.TemplateResponse(
@@ -239,7 +240,7 @@ async def processar_novo_chamado(
 
     chamado = await obter_chamado(db, chamado.id)
 
-    await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, None)
+    await salvar_rastreios(db, chamado.id, codigo_rastreio_envio, None, commit=False)
 
     await notificar_novo_chamado(
         db,
@@ -265,6 +266,7 @@ async def processar_novo_chamado(
             titulo=chamado.titulo, numero_chamado=chamado.numero_chamado,
         )
 
+    await db.commit()
     resposta = Response(status_code=200)
     resposta.headers["HX-Redirect"] = "/chamados"
     return resposta
@@ -310,12 +312,14 @@ async def alterar_status(
     latitude_num = _para_float_ou_none(latitude)
     longitude_num = _para_float_ou_none(longitude)
 
+    anterior = await obter_chamado(db, chamado_id)
+    status_anterior_id = anterior.status_id
     try:
-        chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude_num, longitude_num)
+        chamado = await atualizar_status(db, chamado_id, status_id, usuario["codigo"], usuario["nome"], latitude_num, longitude_num, commit=False)
     except OpcaoChamadoInvalida as erro:
         raise HTTPException(status_code=422, detail=str(erro)) from erro
 
-    if chamado is not None and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
+    if chamado is not None and status_anterior_id != status_id and status_id in (STATUS_RESOLVIDO_ID, STATUS_CANCELADO_ID):
         await notificar_mudanca_status(
             db, chamado_id=chamado.id, cliente_nome=chamado.cliente_nome_snapshot,
             titulo=chamado.titulo, numero_chamado=chamado.numero_chamado, status_nome=chamado.status.nome,
@@ -324,6 +328,7 @@ async def alterar_status(
             await notificar_diretoria(
                 db, cliente_nome=chamado.cliente_nome_snapshot, titulo=chamado.titulo, status_nome=chamado.status.nome,
             )
+    await db.commit()
     return _redirect_para_chamado(chamado_id)
 
 
@@ -377,9 +382,11 @@ async def alterar_responsavel(
     usuario: dict = Depends(get_current_user), db: AsyncSession = Depends(get_helpdesk_db),
     responsavel_codigo: int | None = Form(None),
 ):
-    chamado = await atualizar_responsavel(db, chamado_id, responsavel_codigo, usuario["codigo"], usuario["nome"])
+    anterior = await obter_chamado(db, chamado_id)
+    responsavel_anterior = anterior.responsavel_codigo
+    chamado = await atualizar_responsavel(db, chamado_id, responsavel_codigo, usuario["codigo"], usuario["nome"], commit=False)
 
-    if chamado is not None and responsavel_codigo:
+    if chamado is not None and responsavel_codigo and responsavel_anterior != responsavel_codigo:
         numero = await buscar_numero_whatsapp(db, responsavel_codigo)
         if numero:
             await notificar_atribuicao_individual(
@@ -389,6 +396,7 @@ async def alterar_responsavel(
                 titulo=chamado.titulo, numero_chamado=chamado.numero_chamado,
             )
 
+    await db.commit()
     return _redirect_para_chamado(chamado_id)
 
 

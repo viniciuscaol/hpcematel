@@ -53,5 +53,5 @@ Nenhuma mudança de schema é necessária.
 5. Trocar prioridade: a alteração deve aparecer no histórico, mantendo o
    prazo. A regra vale também para chamados já em pausa.
 
-A fila de notificações ainda tem as limitações descritas no relatório de
-análise; confiabilidade de entrega será tratada em uma alteração separada.
+O marcador de alerta representa inclusão na fila, não confirmação de entrega
+ao WhatsApp. Reenvios e operação da fila: [Notificações](NOTIFICACOES.md).

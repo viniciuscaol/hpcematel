@@ -79,6 +79,7 @@ async def criar_chamado(
     db: AsyncSession, *, cliente_codigo: int, titulo: str, descricao: str | None,
     categoria_ids: list[int], prioridade_id: int, responsavel_codigo: int, responsavel_nome: str,
     criado_por_codigo: int, criado_por_nome: str,
+    commit: bool = True,
 ) -> Chamado:
     cliente = await buscar_cliente_por_codigo(cliente_codigo)
     if cliente is None:
@@ -112,9 +113,7 @@ async def criar_chamado(
         chamado_id=chamado_id, usuario_codigo=criado_por_codigo, usuario_nome_snapshot=criado_por_nome,
         campo_alterado="criacao", valor_anterior=None, valor_novo=f"Chamado criado ({nomes})",
     ))
-    await db.commit()
-    db.expire_all()
-    return await obter_chamado(db, chamado_id)
+    return await _salvar_e_recarregar(db, chamado_id, commit=commit)
 
 
 async def listar_responsaveis_possiveis() -> list[dict]:
@@ -199,6 +198,16 @@ async def obter_chamado(db: AsyncSession, chamado_id: int) -> Chamado | None:
     return chamado
 
 
+async def _salvar_e_recarregar(db: AsyncSession, chamado_id: int, *, commit: bool) -> Chamado | None:
+    """Permite ao chamador confirmar alteração e notificações na mesma transação."""
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
+    db.expire_all()
+    return await obter_chamado(db, chamado_id)
+
+
 async def listar_status_ativos(db: AsyncSession) -> list[Status]:
     result = await db.execute(select(Status).where(Status.ativo.is_(True)).order_by(Status.ordem))
     return list(result.scalars().all())
@@ -207,6 +216,7 @@ async def listar_status_ativos(db: AsyncSession) -> list[Status]:
 async def atualizar_status(
     db, chamado_id, novo_status_id, usuario_codigo, usuario_nome,
     latitude: float | None = None, longitude: float | None = None,
+    *, commit: bool = True,
 ) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
@@ -264,9 +274,7 @@ async def atualizar_status(
         valor_anterior=status_anterior.nome if status_anterior else None,
         valor_novo=status_novo.nome if status_novo else None,
     ))
-    await db.commit()
-    db.expire_all()
-    return await obter_chamado(db, chamado_id)
+    return await _salvar_e_recarregar(db, chamado_id, commit=commit)
 
 
 async def atualizar_categorias(db, chamado_id, categoria_ids, usuario_codigo, usuario_nome) -> Chamado | None:
@@ -312,7 +320,7 @@ async def atualizar_prioridade(db, chamado_id, nova_prioridade_id, usuario_codig
     return await obter_chamado(db, chamado_id)
 
 
-async def atualizar_responsavel(db, chamado_id, novo_responsavel_codigo, usuario_codigo, usuario_nome) -> Chamado | None:
+async def atualizar_responsavel(db, chamado_id, novo_responsavel_codigo, usuario_codigo, usuario_nome, *, commit: bool = True) -> Chamado | None:
     chamado = await obter_chamado(db, chamado_id)
     if chamado is None:
         return None
@@ -330,9 +338,7 @@ async def atualizar_responsavel(db, chamado_id, novo_responsavel_codigo, usuario
         chamado_id=chamado.id, usuario_codigo=usuario_codigo, usuario_nome_snapshot=usuario_nome,
         campo_alterado="responsavel", valor_anterior=nome_anterior, valor_novo=novo_nome,
     ))
-    await db.commit()
-    db.expire_all()
-    return await obter_chamado(db, chamado_id)
+    return await _salvar_e_recarregar(db, chamado_id, commit=commit)
 
 
 async def adicionar_interacao(db, chamado_id, usuario_codigo, usuario_nome, texto) -> Chamado | None:
@@ -440,7 +446,7 @@ from app.models.chamado import ChamadoRastreio
 from app.services.correios_service import consultar_rastreio
 
 
-async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo_reverso: str | None) -> None:
+async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo_reverso: str | None, *, commit: bool = True) -> None:
     result = await db.execute(select(ChamadoRastreio).where(ChamadoRastreio.chamado_id == chamado_id))
     existentes = {r.tipo: r for r in result.scalars().all()}
 
@@ -464,9 +470,13 @@ async def salvar_rastreios(db, chamado_id: int, codigo_envio: str | None, codigo
             await atualizar_status(
                 db, chamado_id, STATUS_AGUARDANDO_CORREIOS_ID,
                 chamado.criado_por_codigo, chamado.criado_por_nome_snapshot,
+                commit=False,
             )
 
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
 
 async def listar_chamados_resolvidos(
     db, data_inicio: date, data_fim: date, usuarios_codigos: list[int] | None = None,

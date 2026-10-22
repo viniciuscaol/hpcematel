@@ -30,7 +30,7 @@ ACOES = [
 def contexto(monkeypatch):
     db = AsyncMock()
     papel = AsyncMock(return_value="CAC")
-    obter = AsyncMock(return_value=SimpleNamespace(id=1, excluido=False))
+    obter = AsyncMock(return_value=SimpleNamespace(id=1, excluido=False, status_id=1, responsavel_codigo=None))
 
     async def banco_fake():
         yield db
