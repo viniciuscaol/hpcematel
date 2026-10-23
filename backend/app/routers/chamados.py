@@ -31,6 +31,7 @@ from app.services.chamado_service import (
     assumir_chamado,
     listar_chamados_para_assumir,
     ClienteNaoEncontrado,
+    ChamadoIndisponivel,
     OpcaoChamadoInvalida,
     adicionar_interacao,
     atualizar_categorias,
@@ -486,7 +487,12 @@ async def assumir(
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
 ):
-    await assumir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
+    try:
+        chamado = await assumir_chamado(db, chamado_id, usuario["codigo"], usuario["nome"])
+    except ChamadoIndisponivel as erro:
+        raise HTTPException(status_code=409, detail=str(erro)) from erro
+    if chamado is None:
+        raise HTTPException(status_code=404, detail="Chamado não encontrado.")
     return _redirect_para_chamado(chamado_id)
 
 @router.post("/{chamado_id}/rastreio", dependencies=[Depends(_exigir_chamado_editavel)])

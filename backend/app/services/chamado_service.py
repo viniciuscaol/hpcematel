@@ -33,6 +33,10 @@ class OpcaoChamadoInvalida(ValueError):
     """Status/prioridade inexistente ou indisponível para novas alterações."""
 
 
+class ChamadoIndisponivel(Exception):
+    """O chamado mudou de estado antes de o técnico conseguir assumi-lo."""
+
+
 async def _obter_prioridade_valida(db: AsyncSession, prioridade_id: int) -> Prioridade:
     prioridade = await db.get(Prioridade, prioridade_id)
     if prioridade is None or not prioridade.ativo or prioridade.sla_horas <= 0:
@@ -416,11 +420,19 @@ async def listar_chamados_para_assumir(db) -> list[Chamado]:
 
 async def assumir_chamado(db, chamado_id, usuario_codigo, usuario_nome) -> Chamado | None:
     """Associa o chamado ao técnico e move de 'Aberto' para 'Em andamento'."""
-    chamado = await obter_chamado(db, chamado_id)
+    # O guard da rota pode já ter carregado uma versão antiga nesta sessão.
+    # Recarrega os campos após obter o lock; uma segunda requisição espera
+    # o commit da primeira e valida o estado atualizado antes de escrever.
+    result = await db.execute(
+        select(Chamado).where(Chamado.id == chamado_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    chamado = result.scalar_one_or_none()
     if chamado is None:
         return None
-    if chamado.status_id != STATUS_INICIAL_ID:
-        return chamado  # já foi assumido/alterado por outra pessoa nesse meio tempo
+    if chamado.excluido or chamado.status_id != STATUS_INICIAL_ID:
+        raise ChamadoIndisponivel("Este chamado já foi assumido ou não está mais disponível.")
 
     responsavel_anterior = chamado.responsavel_nome_snapshot or "Não atribuído"
     status_anterior = await db.get(Status, chamado.status_id)

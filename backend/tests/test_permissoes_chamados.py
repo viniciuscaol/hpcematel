@@ -123,3 +123,32 @@ async def test_opcao_invalida_retorna_422_em_vez_de_500(client, contexto, monkey
     assert resposta.status_code == 422
     assert resposta.json()["detail"] == "Opção indisponível."
     contexto.db.commit.assert_not_awaited()
+
+
+async def test_assumir_indisponivel_retorna_409_sem_redirecionar_para_detalhe(client, contexto, monkeypatch):
+    autenticar(client)
+    contexto.papel.return_value = "TECNICO"
+    monkeypatch.setattr(chamados, "assumir_chamado", AsyncMock(side_effect=chamados.ChamadoIndisponivel("Chamado indisponível.")))
+    resposta = await enviar(client, "assumir", {})
+    assert resposta.status_code == 409
+    assert "HX-Redirect" not in resposta.headers
+    assert resposta.json()["detail"] == "Chamado indisponível."
+
+
+async def test_assumir_removido_apos_guard_retorna_404(client, contexto, monkeypatch):
+    autenticar(client)
+    contexto.papel.return_value = "TECNICO"
+    monkeypatch.setattr(chamados, "assumir_chamado", AsyncMock(return_value=None))
+    assert (await enviar(client, "assumir", {})).status_code == 404
+
+
+@pytest.mark.parametrize("aviso,esperado", [("indisponivel", True), ("texto-arbitrario", False), ("", False)])
+async def test_painel_tecnico_exibe_apenas_aviso_conhecido(client, contexto, monkeypatch, aviso, esperado):
+    from app.routers import pages
+    autenticar(client)
+    contexto.papel.return_value = "TECNICO"
+    monkeypatch.setattr(pages, "listar_chamados_para_assumir", AsyncMock(return_value=[]))
+    resposta = await client.get("/tecnico", params={"aviso": aviso})
+    assert resposta.status_code == 200
+    assert ("A lista foi atualizada." in resposta.text) is esperado
+    assert "texto-arbitrario" not in resposta.text

@@ -135,9 +135,11 @@ async def tela_tecnico(
     request: Request,
     usuario: dict = Depends(exigir_papel(PAPEL_TECNICO, PAPEL_ADMIN)),
     db: AsyncSession = Depends(get_helpdesk_db),
+    aviso: str | None = None,
 ):
     chamados = await listar_chamados_para_assumir(db)
-    return templates.TemplateResponse("tecnico.html", {"request": request, "usuario": usuario, "chamados": chamados})
+    mensagem = "Este chamado já foi assumido ou não está mais disponível. A lista foi atualizada." if aviso == "indisponivel" else None
+    return templates.TemplateResponse("tecnico.html", {"request": request, "usuario": usuario, "chamados": chamados, "aviso": mensagem})
 
 
 @router.post("/logout")

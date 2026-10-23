@@ -6,6 +6,7 @@
   <main class="content">
     <h1>Painel Técnico</h1>
     <p class="sem-resultado">Chamados em aberto disponíveis para atendimento.</p>
+    {% if aviso %}<p class="error-message" role="alert">{{ aviso }}</p>{% endif %}
 
     {% if chamados %}
     <div class="tecnico-cards">
@@ -31,4 +32,5 @@
     {% endif %}
   </main>
 </div>
+<script src="/static/js/tecnico.js" defer></script>
 {% endblock %}
