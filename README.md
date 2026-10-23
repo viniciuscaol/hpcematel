@@ -64,7 +64,9 @@ check e pull request; a existência do workflow, sozinha, não impõe a regra.
 Regras atuais do SLA e validação: [SLA](docs/SLA.md).
 Envio e recuperação de mensagens: [Notificações WhatsApp](docs/NOTIFICACOES.md).
 
-Próximas etapas de melhoria: concorrência ao assumir chamados;
-readiness do banco; restauração conjunta de banco e anexos; alertas e rollback.
+Dois técnicos assumindo o mesmo chamado: [Atendimento concorrente](docs/ATENDIMENTO.md).
+
+Próximas etapas de melhoria: readiness do banco; restauração conjunta de banco
+e anexos; alertas e rollback.
 O scheduler ainda roda dentro da API: não aumentar réplicas sem tratar a
 execução duplicada de tarefas.
