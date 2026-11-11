@@ -137,8 +137,8 @@ async def obter_historico(db, minutos: int = 60) -> list[dict[str, Any]]:
 
 async def executar_panico(senha: str) -> tuple[bool, str]:
     global _ultimo_panic
-    if not settings.monitor_panic_password or not settings.monitor_panic_script:
-        return False, "Botão de pânico não configurado no servidor"
+    if not panico_configurado():
+        return False, "Botão de pânico não configurado corretamente no servidor"
     if not hmac.compare_digest(senha, settings.monitor_panic_password):
         return False, "Senha de autorização inválida"
     if not settings.monitor_panic_script.startswith("/") or any(c in settings.monitor_panic_script for c in "\n\r"):
@@ -169,4 +169,10 @@ def _executar_panico_bloqueante() -> tuple[bool, str]:
 
 
 def panico_configurado() -> bool:
-    return bool(settings.monitor_panic_password and settings.monitor_panic_script)
+    script = settings.monitor_panic_script
+    return bool(
+        settings.monitor_panic_password
+        and len(settings.monitor_panic_password) >= 16
+        and script.startswith("/")
+        and not any(c in script for c in "\\n\\r")
+    )
