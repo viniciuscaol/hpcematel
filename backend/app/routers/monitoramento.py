@@ -8,7 +8,7 @@ from app.auth.authorization import exigir_papel
 from app.database.helpdesk_db import get_helpdesk_db
 from app.models.monitoramento import MonitoramentoAcao
 from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO
-from app.services.monitoramento_service import obter_estado, obter_historico, coletar_e_salvar, executar_panico
+from app.services.monitoramento_service import obter_estado, obter_historico, coletar_e_salvar, executar_panico, panico_configurado
 from app.templates_config import templates
 
 router = APIRouter()
@@ -22,7 +22,7 @@ async def pagina_monitoramento(request: Request, usuario: dict = Depends(ACESSO)
 
 @router.get("/api/monitoramento/status")
 async def status_monitoramento(usuario: dict = Depends(ACESSO)):
-    return obter_estado()
+    return {**obter_estado(), "panic_configurado": panico_configurado()}
 
 
 @router.get("/api/monitoramento/historico")
