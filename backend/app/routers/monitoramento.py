@@ -10,6 +10,7 @@ from app.models.monitoramento import MonitoramentoAcao
 from app.services.contato_service import PAPEL_ADMIN, PAPEL_TECNICO
 from app.services.monitoramento_service import obter_estado, obter_historico, coletar_e_salvar, executar_panico, panico_configurado
 from app.templates_config import templates
+from app.routers.auth import limiter
 
 router = APIRouter()
 ACESSO = exigir_papel(PAPEL_ADMIN, PAPEL_TECNICO)
@@ -34,6 +35,7 @@ async def historico_monitoramento(
 
 
 @router.post("/api/monitoramento/panico")
+@limiter.limit("5/minute")
 async def panico_monitoramento(
     request: Request, confirmacao: str = Form(...), senha: str = Form(...),
     usuario: dict = Depends(ACESSO), db: AsyncSession = Depends(get_helpdesk_db),
