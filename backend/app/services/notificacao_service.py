@@ -90,6 +90,11 @@ async def processar_fila_notificacoes(db: AsyncSession) -> None:
             if pendente is None:
                 await db.commit()
                 break
+            # Se a janela comercial fechar durante o lote, só continua para
+            # itens explicitamente marcados como alertas críticos 24h.
+            if not _dentro_do_horario() and not getattr(pendente, "fora_horario", False):
+                await db.commit()
+                break
             pendente.tentativas += 1
             pendente.ultima_tentativa_em = datetime.now(timezone.utc)
             try:
