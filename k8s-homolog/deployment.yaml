@@ -31,9 +31,17 @@ spec:
                 name: helpdesk-config
             - secretRef:
                 name: helpdesk-secrets
+          env:
+            - name: MONITOR_SSH_KEY
+              value: /run/monitoramento-ssh/id_rsa
+            - name: MONITOR_SSH_KNOWN_HOSTS
+              value: /run/monitoramento-ssh/known_hosts
           volumeMounts:
             - name: anexos
               mountPath: /app/anexos
+            - name: monitoramento-ssh
+              mountPath: /run/monitoramento-ssh
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /health
@@ -47,6 +55,11 @@ spec:
             initialDelaySeconds: 15
             periodSeconds: 20
       volumes:
+        - name: monitoramento-ssh
+          secret:
+            secretName: monitoramento-ssh
+            optional: true
+            defaultMode: 0444
         - name: anexos
           persistentVolumeClaim:
             claimName: helpdesk-anexos
