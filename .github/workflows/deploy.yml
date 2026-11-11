@@ -81,6 +81,8 @@ jobs:
           bash scripts/migrate.sh chamados-cematel-homolog \
             "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
             "helpdesk-migrate-homolog-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Aplicar manifesto de homologação
+        run: kubectl apply -f k8s-homolog/deployment.yaml
       - name: Deploy em homologação
         run: |
           kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel-homolog
@@ -99,6 +101,8 @@ jobs:
           bash scripts/migrate.sh chamados-cematel \
             "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
             "helpdesk-migrate-prod-${{ github.run_id }}-${{ github.run_attempt }}"
+      - name: Aplicar manifesto de produção
+        run: kubectl apply -f k8s/deployment.yaml
       - name: Deploy em produção
         run: |
           kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel
