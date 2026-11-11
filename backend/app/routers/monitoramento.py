@@ -53,7 +53,7 @@ async def panico_monitoramento(
         ))
         await db.commit()
         raise HTTPException(400, "Digite REINICIAR para confirmar.")
-    sucesso, detalhe = await executar_panico(senha)
+    sucesso, detalhe = await executar_panico(senha, db, usuario)
     db.add(MonitoramentoAcao(
         usuario_codigo=usuario["codigo"], usuario_login=usuario["login"],
         usuario_nome=usuario["nome"], resultado="sucesso" if sucesso else "falha",

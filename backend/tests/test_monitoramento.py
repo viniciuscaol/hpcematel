@@ -64,10 +64,11 @@ async def test_painel_monitoramento_exige_sessao(client, contexto_monitoramento)
 
 
 def test_modelos_monitoramento_estao_registrados():
-    from app.models.monitoramento import MonitoramentoAcao, MonitoramentoAmostra
+    from app.models.monitoramento import MonitoramentoAcao, MonitoramentoAmostra, MonitoramentoEstado
 
     assert MonitoramentoAmostra.__tablename__ == "monitoramento_amostra"
     assert MonitoramentoAcao.__tablename__ == "monitoramento_acao"
+    assert MonitoramentoEstado.__tablename__ == "monitoramento_estado"
 
 async def test_acionamento_panico_audita_usuario_autenticado(client, contexto_monitoramento, monkeypatch):
     from app.routers import monitoramento
@@ -83,7 +84,10 @@ async def test_acionamento_panico_audita_usuario_autenticado(client, contexto_mo
     )
 
     assert resposta.status_code == 200
-    executar.assert_awaited_once_with("senha-de-teste")
+    executar.assert_awaited_once()
+    assert executar.await_args.args[0] == "senha-de-teste"
+    assert executar.await_args.args[1] is contexto_monitoramento.db
+    assert executar.await_args.args[2]["login"] == "teste"
     registro = contexto_monitoramento.db.add.call_args.args[0]
     assert registro.usuario_codigo == 10
     assert registro.usuario_login == "teste"
@@ -112,3 +116,28 @@ async def test_confirmacao_invalida_e_auditada_sem_executar_panico(client, conte
     assert registro.resultado == "falha"
     assert registro.detalhe == "Confirmação textual inválida"
     contexto_monitoramento.db.commit.assert_awaited_once()
+
+
+def test_senha_rotativa_tem_formato_aleatorio():
+    from app.services.monitoramento_service import _nova_senha
+
+    primeira = _nova_senha()
+    segunda = _nova_senha()
+
+    assert len(primeira) == 14
+    assert primeira.count("-") == 2
+    assert primeira != segunda
+
+
+def test_notificacao_monitoramento_e_enfileirada_para_24h(monkeypatch):
+    from app.services.monitoramento_service import _enfileirar_mensagem
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "waha_grupo_monitoramento_id", "grupo-operacional@g.us")
+    db = MagicMock()
+
+    assert _enfileirar_mensagem(db, "alerta de teste") is True
+    notificacao = db.add.call_args.args[0]
+    assert notificacao.chat_id == "grupo-operacional@g.us"
+    assert notificacao.mensagem == "alerta de teste"
+    assert notificacao.fora_horario is True

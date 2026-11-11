@@ -81,9 +81,9 @@ jobs:
           bash scripts/migrate.sh chamados-cematel-homolog \
             "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
             "helpdesk-migrate-homolog-${{ github.run_id }}-${{ github.run_attempt }}"
-      - name: Deploy em homologação
+      - name: Aplicar manifesto e imagem de homologação
         run: |
-          kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel-homolog
+          sed "s|image: ghcr.io/viniciuscaol/hpcematel:bootstrap|image: ${{ env.IMAGE }}:${{ needs.build.outputs.tag }}|" k8s-homolog/deployment.yaml | kubectl apply -f -
           kubectl rollout status deployment/helpdesk-backend -n chamados-cematel-homolog --timeout=120s
 
   deploy-producao:
@@ -99,7 +99,7 @@ jobs:
           bash scripts/migrate.sh chamados-cematel \
             "${{ env.IMAGE }}:${{ needs.build.outputs.tag }}" \
             "helpdesk-migrate-prod-${{ github.run_id }}-${{ github.run_attempt }}"
-      - name: Deploy em produção
+      - name: Aplicar manifesto e imagem de produção
         run: |
-          kubectl set image deployment/helpdesk-backend backend=${{ env.IMAGE }}:${{ needs.build.outputs.tag }} -n chamados-cematel
+          sed "s|image: ghcr.io/viniciuscaol/hpcematel:bootstrap|image: ${{ env.IMAGE }}:${{ needs.build.outputs.tag }}|" k8s/deployment.yaml | kubectl apply -f -
           kubectl rollout status deployment/helpdesk-backend -n chamados-cematel --timeout=120s

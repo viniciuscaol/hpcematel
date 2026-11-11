@@ -233,3 +233,5 @@ class NotificacaoPendente(Base):
     ultima_tentativa_em: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     proxima_tentativa_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), index=True)
     ultimo_erro: Mapped[str | None] = mapped_column(String(120))
+    # Alertas de monitoramento podem ser entregues 24h; chamados mantêm janela comercial.
+    fora_horario: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")

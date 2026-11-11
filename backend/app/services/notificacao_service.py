@@ -67,24 +67,36 @@ def _resumir_erro(erro: Exception) -> str:
 
 async def processar_fila_notificacoes(db: AsyncSession) -> None:
     """Usa sessão própria e confirma cada item; SKIP LOCKED evita envio concorrente."""
-    if not _dentro_do_horario() or not settings.waha_api_key:
+    if not settings.waha_api_key:
         return
+    iniciou_no_horario_comercial = _dentro_do_horario()
 
     url = f"{settings.waha_api_url}/api/sendText"
     async with httpx.AsyncClient(timeout=10.0) as client:
         for _ in range(TAMANHO_LOTE):
-            if not _dentro_do_horario():
+            dentro_horario = _dentro_do_horario()
+            if iniciou_no_horario_comercial and not dentro_horario:
                 break
+            consulta = select(NotificacaoPendente).where(
+                NotificacaoPendente.proxima_tentativa_em <= datetime.now(timezone.utc)
+            )
+            # Alertas de monitoramento são críticos e podem sair 24h; chamados
+            # continuam respeitando a janela comercial configurada acima.
+            if not dentro_horario:
+                consulta = consulta.where(NotificacaoPendente.fora_horario.is_(True))
             result = await db.execute(
-                select(NotificacaoPendente)
-                .where(NotificacaoPendente.proxima_tentativa_em <= datetime.now(timezone.utc))
-                .order_by(NotificacaoPendente.criado_em, NotificacaoPendente.id)
+                consulta.order_by(NotificacaoPendente.criado_em, NotificacaoPendente.id)
                 .with_for_update(skip_locked=True)
                 .execution_options(populate_existing=True)
                 .limit(1)
             )
             pendente = result.scalar_one_or_none()
             if pendente is None:
+                await db.commit()
+                break
+            # Se a janela comercial fechar durante o lote, só continua para
+            # itens explicitamente marcados como alertas críticos 24h.
+            if not dentro_horario and not getattr(pendente, "fora_horario", False):
                 await db.commit()
                 break
             pendente.tentativas += 1
