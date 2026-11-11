@@ -292,5 +292,5 @@ def panico_configurado() -> bool:
         and settings.waha_api_key
         and settings.waha_grupo_monitoramento_id
         and script.startswith("/")
-        and not any(c in script for c in "\\n\\r")
+        and "\n" not in script and "\r" not in script
     )
