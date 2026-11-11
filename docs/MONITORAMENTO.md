@@ -11,7 +11,7 @@ Variáveis:
 - `MONITOR_SSH_KEY`, `MONITOR_SSH_KNOWN_HOSTS`, `MONITOR_SSH_KEY_PASSPHRASE`
 - `MONITOR_POLL_INTERVAL` (padrão 5 segundos)
 
-No Kubernetes, crie um Secret chamado `monitoramento-ssh` em cada namespace que receberá a aplicação, contendo as chaves `id_rsa` e `known_hosts`. O Deployment monta esse Secret em `/run/monitoramento-ssh`. O Secret é opcional para permitir que o Help Desk continue funcionando antes da configuração; sem SSH, o painel informa indisponibilidade.
+No Kubernetes, crie um Secret chamado `monitoramento-ssh` em cada namespace que receberá a aplicação, contendo as chaves `id_rsa` e `known_hosts`. O Deployment monta esse Secret em `/run/monitoramento-ssh`. Crie também `monitoramento-secrets` para os valores sensíveis opcionais (por exemplo `MONITOR_SSH_KEY_PASSPHRASE` e `MONITOR_PANIC_PASSWORD`). O Deployment importa esse Secret quando existir; sem ele, o Help Desk continua funcionando. Sem SSH, o painel informa indisponibilidade.
 
 Exemplo de criação (executar localmente, sem versionar os arquivos):
 ```sh
@@ -23,7 +23,7 @@ kubectl -n chamados-cematel-homolog create secret generic monitoramento-ssh \
   --from-file=known_hosts=/caminho/known_hosts
 ```
 
-Configure também `MONITOR_SSH_HOST`, `MONITOR_SSH_PORT` e `MONITOR_SSH_USER` no ConfigMap/Secret `helpdesk-config`/`helpdesk-secrets`. O usuário SSH deve ter somente as permissões necessárias para ler métricas do sistema.
+Configure `MONITOR_SSH_HOST`, `MONITOR_SSH_PORT` e `MONITOR_SSH_USER` no ConfigMap `helpdesk-config` do namespace. Mantenha `MONITOR_SSH_KEY_PASSPHRASE`, `MONITOR_PANIC_PASSWORD` e, quando desejado, `MONITOR_PANIC_SCRIPT` no Secret `monitoramento-secrets`. O usuário SSH deve ter somente as permissões necessárias para ler métricas do sistema.
 
 ## Botão de pânico
 
