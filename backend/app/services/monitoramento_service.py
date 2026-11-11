@@ -34,8 +34,7 @@ def _fernet() -> Fernet:
 
 def _nova_senha() -> str:
     alfabeto = string.ascii_uppercase + string.digits
-    partes = ["".join(secrets.choice(alfabeto) for _ in range(4)) for _ in range(3)]
-    return "-".join(partes)
+    return "".join(secrets.choice(alfabeto) for _ in range(16))
 
 
 def _enfileirar_mensagem(db, mensagem: str) -> bool:
