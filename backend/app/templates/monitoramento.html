@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Monitoramento - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content monitoramento-page">
+    <div class="monitoramento-heading">
+      <div><h1>Monitoramento</h1><p class="sem-resultado">Visão operacional do servidor em tempo real.</p></div>
+      <span id="monitor-status" class="monitor-status offline">Conectando...</span>
+    </div>
+    <section class="monitor-grid">
+      <article class="monitor-card gauge-card"><h2>CPU</h2><div class="gauge" id="gauge-cpu"><strong id="cpu-valor">--%</strong></div><p id="cpu-host">Aguardando coleta</p></article>
+      <article class="monitor-card gauge-card"><h2>Memória RAM</h2><div class="gauge" id="gauge-ram"><strong id="ram-valor">--%</strong></div><p id="ram-detalhe">--</p></article>
+      <article class="monitor-card monitor-info"><h2>Servidor</h2><dl><dt>Nome</dt><dd id="host">--</dd><dt>Load average</dt><dd id="load">--</dd><dt>Uptime</dt><dd id="uptime">--</dd><dt>Swap</dt><dd id="swap">--</dd></dl></article>
+    </section>
+    <section class="monitor-grid monitor-lower">
+      <article class="monitor-card monitor-chart"><div class="monitor-card-heading"><h2>Histórico</h2><span>Últimos 60 minutos</span></div><canvas id="monitor-chart" height="130"></canvas></article>
+      <article class="monitor-card monitor-processos"><h2>Processos com maior consumo</h2><div class="table-wrap"><table><thead><tr><th>Processo</th><th>PID</th><th>CPU</th><th>RAM</th></tr></thead><tbody id="processos"><tr><td colspan="4">Aguardando coleta...</td></tr></tbody></table></div></article>
+    </section>
+    <section class="monitor-card monitor-panic">
+      <div><h2>Botão de pânico</h2><p>Executa somente o script de emergência configurado no servidor.</p></div>
+      <button id="abrir-panico" class="monitor-panic-button" type="button" disabled>EMERGÊNCIA NÃO CONFIGURADA</button>
+    </section>
+    <dialog id="dialog-panico" class="monitor-dialog">
+      <form id="form-panico">
+        <h2>Confirmar ação de emergência</h2><p>Esta ação pode reiniciar serviços ou o servidor. Digite <strong>REINICIAR</strong> e informe sua senha de autorização.</p>
+        <label for="confirmacao-panico">Confirmação</label><input id="confirmacao-panico" name="confirmacao" autocomplete="off" required>
+        <label for="senha-panico">Senha de autorização</label><input id="senha-panico" name="senha" type="password" autocomplete="current-password" required>
+        <p id="panico-mensagem" role="status"></p>
+        <div class="monitor-dialog-actions"><button type="button" id="cancelar-panico" class="button-secondary">Cancelar</button><button type="submit" class="monitor-panic-button">Confirmar acionamento</button></div>
+      </form>
+    </dialog>
+  </main>
+</div>
+<link rel="stylesheet" href="/static/css/monitoramento.css">
+<script src="/static/js/monitoramento.js" defer></script>
+{% endblock %}

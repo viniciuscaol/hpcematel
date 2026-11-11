@@ -59,6 +59,7 @@ check e pull request; a existência do workflow, sozinha, não impõe a regra.
 ## Operação e próximos passos
 
 - [Deploy](docs/DEPLOY.md)
+- [Monitoramento e botão de pânico](docs/MONITORAMENTO.md)
 - [Segurança e resposta à exposição de dados](docs/SEGURANCA.md)
 
 Regras atuais do SLA e validação: [SLA](docs/SLA.md).

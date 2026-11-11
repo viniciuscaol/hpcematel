@@ -32,6 +32,18 @@ class Settings(BaseSettings):
 
     pacotevicio_api_key: str = ""
 
+    # Monitoramento remoto (SSH); vazio desativa a coleta sem impedir o Help Desk.
+    monitor_ssh_host: str = ""
+    monitor_ssh_port: int = 30022
+    monitor_ssh_user: str = ""
+    monitor_ssh_key: str = ""
+    monitor_ssh_known_hosts: str = ""
+    monitor_ssh_key_passphrase: str = ""
+    monitor_poll_interval: int = 5
+    monitor_panic_password: str = ""
+    monitor_panic_script: str = ""
+    monitor_panic_sudo: bool = True
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     @property
