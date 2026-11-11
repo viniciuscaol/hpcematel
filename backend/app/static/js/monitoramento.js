@@ -27,6 +27,8 @@
       if(!s.ok||!h.ok)throw new Error("Falha ao consultar monitoramento");
       const d=await s.json();historico=await h.json();
       $("monitor-status").textContent=d.online?"Servidor conectado":"Servidor indisponível";
+      $("abrir-panico").disabled=!d.panic_configurado;
+      $("abrir-panico").textContent=d.panic_configurado?"ACIONAR EMERGÊNCIA":"EMERGÊNCIA NÃO CONFIGURADA";
       $("monitor-status").className="monitor-status "+(d.online?"online":"offline");
       if(!d.online){$("cpu-host").textContent=d.erro||"Sem conexão";return}
       gauge("gauge-cpu","cpu-valor",d.cpu);gauge("gauge-ram","ram-valor",d.memoria);
