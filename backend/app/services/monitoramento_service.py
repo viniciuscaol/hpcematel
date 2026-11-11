@@ -164,9 +164,9 @@ async def _avaliar_alerta_cpu(db, cpu: float) -> None:
         return
 
     faixa_anterior = registro.faixa_cpu
-    if cpu >= 50:
+    if cpu > 50:
         faixa_nova = "urgencia"
-    elif cpu >= 30:
+    elif cpu > 30:
         faixa_nova = "alerta"
     elif cpu < 25:
         faixa_nova = "normal"
