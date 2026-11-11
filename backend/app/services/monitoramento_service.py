@@ -83,7 +83,7 @@ def _coletar_bloqueante() -> dict[str, Any]:
     disponivel = mem.get("MemAvailable", mem.get("MemFree", 0))
     memoria = round((total_mem - disponivel) * 100 / total_mem, 1) if total_mem else 0
     processos = []
-    for linha in secoes.get("PS", [])[1:]:
+    for linha in secoes.get("PS", []):
         p = linha.split(None, 4)
         if len(p) == 5:
             processos.append({"pid": p[0], "usuario": p[1], "cpu": float(p[2]), "memoria": float(p[3]), "nome": p[4]})
