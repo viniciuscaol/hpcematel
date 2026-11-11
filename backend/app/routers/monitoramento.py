@@ -1,7 +1,7 @@
 """Painel de monitoramento integrado ao login do Help Desk."""
-import asyncio
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from urllib.parse import urlsplit
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.authorization import exigir_papel
@@ -38,6 +38,11 @@ async def panico_monitoramento(
     request: Request, confirmacao: str = Form(...), senha: str = Form(...),
     usuario: dict = Depends(ACESSO), db: AsyncSession = Depends(get_helpdesk_db),
 ):
+    origem = request.headers.get("origin")
+    if origem:
+        origem_url = urlsplit(origem)
+        if origem_url.netloc != request.url.netloc:
+            raise HTTPException(403, "Origem da solicitação não autorizada.")
     if confirmacao != "REINICIAR":
         raise HTTPException(400, "Digite REINICIAR para confirmar.")
     sucesso, detalhe = await executar_panico(senha)
