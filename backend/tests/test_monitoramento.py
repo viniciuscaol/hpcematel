@@ -124,8 +124,9 @@ def test_senha_rotativa_tem_formato_aleatorio():
     primeira = _nova_senha()
     segunda = _nova_senha()
 
-    assert len(primeira) == 14
-    assert primeira.count("-") == 2
+    assert len(primeira) == 16
+    assert primeira.isalnum()
+    assert primeira.isupper()
     assert primeira != segunda
 
 
