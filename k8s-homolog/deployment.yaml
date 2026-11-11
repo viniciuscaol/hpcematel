@@ -31,6 +31,9 @@ spec:
                 name: helpdesk-config
             - secretRef:
                 name: helpdesk-secrets
+            - secretRef:
+                name: monitoramento-secrets
+                optional: true
           env:
             - name: MONITOR_SSH_KEY
               value: /run/monitoramento-ssh/id_rsa
