@@ -1,6 +1,6 @@
 """Acesso ao painel e às APIs de monitoramento respeita o papel do Help Desk."""
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -13,7 +13,8 @@ from app.routers.auth import limiter
 
 @pytest.fixture
 def contexto_monitoramento(monkeypatch):
-    db = AsyncMock()
+    db = MagicMock()
+    db.commit = AsyncMock()
     papel = AsyncMock(return_value="CAC")
 
     async def banco_fake():
@@ -67,3 +68,47 @@ def test_modelos_monitoramento_estao_registrados():
 
     assert MonitoramentoAmostra.__tablename__ == "monitoramento_amostra"
     assert MonitoramentoAcao.__tablename__ == "monitoramento_acao"
+
+async def test_acionamento_panico_audita_usuario_autenticado(client, contexto_monitoramento, monkeypatch):
+    from app.routers import monitoramento
+
+    autenticar_monitoramento(client)
+    contexto_monitoramento.papel.return_value = "TECNICO"
+    executar = AsyncMock(return_value=(True, "Script executado"))
+    monkeypatch.setattr(monitoramento, "executar_panico", executar)
+
+    resposta = await client.post(
+        "/api/monitoramento/panico",
+        data={"confirmacao": "REINICIAR", "senha": "senha-de-teste"},
+    )
+
+    assert resposta.status_code == 200
+    executar.assert_awaited_once_with("senha-de-teste")
+    registro = contexto_monitoramento.db.add.call_args.args[0]
+    assert registro.usuario_codigo == 10
+    assert registro.usuario_login == "teste"
+    assert registro.usuario_nome == "Usuário Teste"
+    assert registro.resultado == "sucesso"
+    contexto_monitoramento.db.commit.assert_awaited_once()
+
+
+async def test_confirmacao_invalida_e_auditada_sem_executar_panico(client, contexto_monitoramento, monkeypatch):
+    from app.routers import monitoramento
+
+    autenticar_monitoramento(client)
+    contexto_monitoramento.papel.return_value = "ADMIN"
+    executar = AsyncMock()
+    monkeypatch.setattr(monitoramento, "executar_panico", executar)
+
+    resposta = await client.post(
+        "/api/monitoramento/panico",
+        data={"confirmacao": "SIM", "senha": "senha-de-teste"},
+    )
+
+    assert resposta.status_code == 400
+    executar.assert_not_awaited()
+    registro = contexto_monitoramento.db.add.call_args.args[0]
+    assert registro.usuario_codigo == 10
+    assert registro.resultado == "falha"
+    assert registro.detalhe == "Confirmação textual inválida"
+    contexto_monitoramento.db.commit.assert_awaited_once()
