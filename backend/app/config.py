@@ -34,7 +34,7 @@ class Settings(BaseSettings):
 
     # Monitoramento remoto (SSH); vazio desativa a coleta sem impedir o Help Desk.
     monitor_ssh_host: str = ""
-    monitor_ssh_port: int = 22
+    monitor_ssh_port: int = 30022
     monitor_ssh_user: str = ""
     monitor_ssh_key: str = ""
     monitor_ssh_known_hosts: str = ""
