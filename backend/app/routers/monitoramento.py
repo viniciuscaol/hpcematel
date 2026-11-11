@@ -44,6 +44,12 @@ async def panico_monitoramento(
         if origem_url.netloc != request.url.netloc:
             raise HTTPException(403, "Origem da solicitação não autorizada.")
     if confirmacao != "REINICIAR":
+        db.add(MonitoramentoAcao(
+            usuario_codigo=usuario["codigo"], usuario_login=usuario["login"],
+            usuario_nome=usuario["nome"], resultado="falha",
+            detalhe="Confirmação textual inválida",
+        ))
+        await db.commit()
         raise HTTPException(400, "Digite REINICIAR para confirmar.")
     sucesso, detalhe = await executar_panico(senha)
     db.add(MonitoramentoAcao(
