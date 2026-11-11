@@ -1,4 +1,4 @@
-"""Modelos de histórico e auditoria do monitoramento de infraestrutura."""
+"""Modelos de histórico, estado e auditoria do monitoramento."""
 from datetime import datetime
 from sqlalchemy import DateTime, Float, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
@@ -23,3 +23,14 @@ class MonitoramentoAcao(Base):
     acionado_em: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     resultado: Mapped[str] = mapped_column(String(30), nullable=False)
     detalhe: Mapped[str | None] = mapped_column(Text)
+
+
+class MonitoramentoEstado(Base):
+    """Estado singleton; a senha é cifrada com chave externa ao banco."""
+    __tablename__ = "monitoramento_estado"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    senha_atual_cifrada: Mapped[str] = mapped_column(Text, nullable=False)
+    faixa_cpu: Mapped[str] = mapped_column(String(20), nullable=False, default="normal")
+    atualizado_em: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
