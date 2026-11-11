@@ -116,3 +116,28 @@ async def test_confirmacao_invalida_e_auditada_sem_executar_panico(client, conte
     assert registro.resultado == "falha"
     assert registro.detalhe == "Confirmação textual inválida"
     contexto_monitoramento.db.commit.assert_awaited_once()
+
+
+def test_senha_rotativa_tem_formato_aleatorio():
+    from app.services.monitoramento_service import _nova_senha
+
+    primeira = _nova_senha()
+    segunda = _nova_senha()
+
+    assert len(primeira) == 14
+    assert primeira.count("-") == 2
+    assert primeira != segunda
+
+
+def test_notificacao_monitoramento_e_enfileirada_para_24h(monkeypatch):
+    from app.services.monitoramento_service import _enfileirar_mensagem
+    from app.config import settings
+
+    monkeypatch.setattr(settings, "waha_grupo_monitoramento_id", "grupo-operacional@g.us")
+    db = MagicMock()
+
+    assert _enfileirar_mensagem(db, "alerta de teste") is True
+    notificacao = db.add.call_args.args[0]
+    assert notificacao.chat_id == "grupo-operacional@g.us"
+    assert notificacao.mensagem == "alerta de teste"
+    assert notificacao.fora_horario is True
