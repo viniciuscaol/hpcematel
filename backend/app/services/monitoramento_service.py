@@ -164,9 +164,9 @@ async def _avaliar_alerta_cpu(db, cpu: float) -> None:
         return
 
     faixa_anterior = registro.faixa_cpu
-    if cpu >= 50:
+    if cpu > 50:
         faixa_nova = "urgencia"
-    elif cpu >= 30:
+    elif cpu > 30:
         faixa_nova = "alerta"
     elif cpu < 25:
         faixa_nova = "normal"
@@ -292,5 +292,5 @@ def panico_configurado() -> bool:
         and settings.waha_api_key
         and settings.waha_grupo_monitoramento_id
         and script.startswith("/")
-        and not any(c in script for c in "\\n\\r")
+        and "\n" not in script and "\r" not in script
     )

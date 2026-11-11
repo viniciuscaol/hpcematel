@@ -15,10 +15,10 @@ No Kubernetes, crie um Secret chamado `monitoramento-ssh` em cada namespace, con
 
 ## Alertas de CPU pelo WAHA
 
-Configure `WAHA_GRUPO_MONITORAMENTO_ID` no ConfigMap `helpdesk-config` de cada namespace com o ID do grupo operacional exclusivo de ADMIN e TÉCNICOS. Não use o ID do grupo da gerência. A aplicação reutiliza a sessão WAHA existente.
+Configure `WAHA_GRUPO_MONITORAMENTO_ID` no Secret `helpdesk-secrets` de produção com o mesmo valor de `WAHA_GRUPO_ID` (grupo operacional de chamados). Não use `WAHA_GRUPO_DIRETORIA_ID`. O envio usa a URL e a sessão WAHA já definidas no ConfigMap `helpdesk-config`. A aplicação reutiliza a sessão WAHA existente.
 
 - CPU acima de 30%: alerta ⚠️.
-- CPU a partir de 50%: urgência 🚨.
+- CPU acima de 50%: urgência 🚨.
 - CPU abaixo de 25%: normalização ✅.
 - Uma mensagem é enviada ao mudar de faixa; não há repetição a cada coleta de 5 segundos. A faixa só volta a normal quando CPU cai abaixo de 25%, reduzindo oscilações.
 - Toda mensagem de alerta contém a senha vigente do botão de emergência.
