@@ -64,10 +64,11 @@ async def test_painel_monitoramento_exige_sessao(client, contexto_monitoramento)
 
 
 def test_modelos_monitoramento_estao_registrados():
-    from app.models.monitoramento import MonitoramentoAcao, MonitoramentoAmostra
+    from app.models.monitoramento import MonitoramentoAcao, MonitoramentoAmostra, MonitoramentoEstado
 
     assert MonitoramentoAmostra.__tablename__ == "monitoramento_amostra"
     assert MonitoramentoAcao.__tablename__ == "monitoramento_acao"
+    assert MonitoramentoEstado.__tablename__ == "monitoramento_estado"
 
 async def test_acionamento_panico_audita_usuario_autenticado(client, contexto_monitoramento, monkeypatch):
     from app.routers import monitoramento
@@ -83,7 +84,10 @@ async def test_acionamento_panico_audita_usuario_autenticado(client, contexto_mo
     )
 
     assert resposta.status_code == 200
-    executar.assert_awaited_once_with("senha-de-teste")
+    executar.assert_awaited_once()
+    assert executar.await_args.args[0] == "senha-de-teste"
+    assert executar.await_args.args[1] is contexto_monitoramento.db
+    assert executar.await_args.args[2]["login"] == "teste"
     registro = contexto_monitoramento.db.add.call_args.args[0]
     assert registro.usuario_codigo == 10
     assert registro.usuario_login == "teste"
