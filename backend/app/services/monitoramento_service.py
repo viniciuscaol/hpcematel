@@ -174,5 +174,5 @@ def panico_configurado() -> bool:
         settings.monitor_panic_password
         and len(settings.monitor_panic_password) >= 16
         and script.startswith("/")
-        and not any(c in script for c in "\\n\\r")
+        and not any(c in script for c in "\n\r")
     )
