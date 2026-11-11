@@ -67,18 +67,21 @@ def _resumir_erro(erro: Exception) -> str:
 
 async def processar_fila_notificacoes(db: AsyncSession) -> None:
     """Usa sessão própria e confirma cada item; SKIP LOCKED evita envio concorrente."""
-    if not _dentro_do_horario() or not settings.waha_api_key:
+    if not settings.waha_api_key:
         return
 
     url = f"{settings.waha_api_url}/api/sendText"
     async with httpx.AsyncClient(timeout=10.0) as client:
         for _ in range(TAMANHO_LOTE):
+            consulta = select(NotificacaoPendente).where(
+                NotificacaoPendente.proxima_tentativa_em <= datetime.now(timezone.utc)
+            )
+            # Alertas de monitoramento são críticos e podem sair 24h; chamados
+            # continuam respeitando a janela comercial configurada acima.
             if not _dentro_do_horario():
-                break
+                consulta = consulta.where(NotificacaoPendente.fora_horario.is_(True))
             result = await db.execute(
-                select(NotificacaoPendente)
-                .where(NotificacaoPendente.proxima_tentativa_em <= datetime.now(timezone.utc))
-                .order_by(NotificacaoPendente.criado_em, NotificacaoPendente.id)
+                consulta.order_by(NotificacaoPendente.criado_em, NotificacaoPendente.id)
                 .with_for_update(skip_locked=True)
                 .execution_options(populate_existing=True)
                 .limit(1)
