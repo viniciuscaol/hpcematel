@@ -166,3 +166,7 @@ def _executar_panico_bloqueante() -> tuple[bool, str]:
     finally:
         if client:
             client.close()
+
+
+def panico_configurado() -> bool:
+    return bool(settings.monitor_panic_password and settings.monitor_panic_script)
