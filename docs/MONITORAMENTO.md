@@ -28,11 +28,11 @@ Configure também `MONITOR_SSH_HOST`, `MONITOR_SSH_PORT` e `MONITOR_SSH_USER` no
 ## Botão de pânico
 
 O botão exige a frase exata `REINICIAR` e uma senha separada do login do Help Desk. O backend executa exclusivamente o caminho absoluto definido em `MONITOR_PANIC_SCRIPT`; não existe campo para comandos livres. Configure:
-- `MONITOR_PANIC_PASSWORD`: senha longa, exclusiva e guardada no Secret `helpdesk-secrets`.
+- `MONITOR_PANIC_PASSWORD`: senha exclusiva com pelo menos 16 caracteres, guardada no Secret `helpdesk-secrets`.
 - `MONITOR_PANIC_SCRIPT`: caminho absoluto do script remoto.
 - `MONITOR_PANIC_SUDO=true`: usa `sudo -n` (sem solicitar senha) para o script.
 
-Se usar sudo, autorize no servidor monitorado somente o script específico, sem curingas e sem permitir comandos arbitrários. Valide o script manualmente antes de habilitar o botão. Há intervalo mínimo de 120 segundos entre acionamentos.
+Se usar sudo, autorize no servidor monitorado somente o script específico, sem curingas e sem permitir comandos arbitrários. Valide o script manualmente antes de habilitar o botão. A API também limita tentativas a 5 por minuto e há intervalo mínimo de 120 segundos entre acionamentos válidos.
 
 Cada tentativa que chega à execução é registrada no banco Help Desk com código, login, nome do usuário, horário, resultado e detalhe. A senha nunca é armazenada no histórico. O histórico de CPU/RAM também fica no PostgreSQL e é mantido por janela diária.
 
