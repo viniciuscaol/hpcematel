@@ -15,12 +15,13 @@ from slowapi.errors import RateLimitExceeded
 from app.auth.dependencies import NaoAutenticado
 from app.config import settings
 from app.database.legacy_db import init_legacy_pool, close_legacy_pool
-from app.routers import admin, auth, chamados, clientes, mapa, pages
+from app.routers import admin, auth, chamados, clientes, mapa, pages, monitoramento
 from app.routers.auth import limiter
 from app.services.sla_monitor_service import verificar_sla_e_notificar
 from app.services.notificacao_service import processar_fila_notificacoes
 from app.templates_config import templates
 from app.services.rastreio_monitor_service import verificar_rastreios_e_notificar
+from app.services.monitoramento_service import coletar_e_salvar
 
 scheduler = AsyncIOScheduler()
 
@@ -34,6 +35,7 @@ async def _verificar_fila_notificacoes():
 async def lifespan(app: FastAPI):
     await init_legacy_pool()
     scheduler.add_job(verificar_rastreios_e_notificar, "interval", minutes=90, id="verificar_rastreios")
+    scheduler.add_job(coletar_e_salvar, "interval", seconds=settings.monitor_poll_interval, id="monitoramento_coleta", max_instances=1, coalesce=True)
     scheduler.add_job(verificar_sla_e_notificar, "interval", minutes=15, id="verificar_sla")
     scheduler.add_job(_verificar_fila_notificacoes, "interval", minutes=1, id="fila_notificacoes", max_instances=1, coalesce=True)
     scheduler.start()
@@ -73,6 +75,7 @@ app.include_router(clientes.router)
 app.include_router(chamados.router)
 app.include_router(admin.router)
 app.include_router(mapa.router)
+app.include_router(monitoramento.router)
 
 @app.get("/health")
 async def health():
