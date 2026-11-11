@@ -1,23 +1,78 @@
-"""Coleta SSH sem agente remoto e execução controlada do botão de pânico."""
+"""Coleta SSH, alertas operacionais e execução controlada do botão de pânico."""
 import asyncio
 import hmac
 import json
+import secrets
 import shlex
+import string
 import time
 from datetime import datetime, timezone
 from typing import Any
 
 import paramiko
+from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import delete, select
 
 from app.config import settings
 from app.database.helpdesk_db import HelpdeskSessionLocal
-from app.models.monitoramento import MonitoramentoAmostra
+from app.models.chamado import NotificacaoPendente
+from app.models.monitoramento import MonitoramentoAmostra, MonitoramentoEstado
+from app.utils.datas import FUSO_BAHIA
 
 _estado: dict[str, Any] = {"online": False, "erro": "Aguardando primeira coleta"}
 _ultimo_cpu = None
 _ultimo_panic = 0.0
 _panic_lock = asyncio.Lock()
+
+
+def _fernet() -> Fernet:
+    chave = settings.monitor_panic_encryption_key
+    if not chave:
+        raise RuntimeError("Chave de cifragem do monitoramento não configurada")
+    return Fernet(chave.encode("ascii"))
+
+
+def _nova_senha() -> str:
+    alfabeto = string.ascii_uppercase + string.digits
+    partes = ["".join(secrets.choice(alfabeto) for _ in range(4)) for _ in range(3)]
+    return "-".join(partes)
+
+
+def _enfileirar_mensagem(db, mensagem: str) -> bool:
+    destino = settings.waha_grupo_monitoramento_id
+    if not destino:
+        return False
+    db.add(NotificacaoPendente(chat_id=destino, mensagem=mensagem, fora_horario=True))
+    return True
+
+
+async def _obter_estado_persistente(db) -> tuple[MonitoramentoEstado, str]:
+    resultado = await db.execute(
+        select(MonitoramentoEstado).where(MonitoramentoEstado.id == 1).with_for_update()
+    )
+    registro = resultado.scalar_one_or_none()
+    if registro is None:
+        inicial = settings.monitor_panic_password
+        if len(inicial) < 16:
+            raise RuntimeError("Senha inicial do botão de pânico não configurada")
+        registro = MonitoramentoEstado(
+            id=1,
+            senha_atual_cifrada=_fernet().encrypt(inicial.encode()).decode(),
+            faixa_cpu="normal",
+        )
+        db.add(registro)
+        _enfileirar_mensagem(
+            db,
+            "🔐 *MONITORAMENTO — CREDENCIAL INICIAL*\n"
+            "Senha de emergência disponível para ADMIN e TÉCNICOS:\n"
+            f"*{inicial}*\nGuarde esta conversa. A senha será renovada após cada acionamento válido.",
+        )
+        await db.flush()
+    try:
+        senha = _fernet().decrypt(registro.senha_atual_cifrada.encode()).decode()
+    except (InvalidToken, ValueError):
+        raise RuntimeError("Não foi possível descriptografar a credencial de emergência")
+    return registro, senha
 
 
 def _ssh_client():
@@ -100,6 +155,48 @@ def _coletar_bloqueante() -> dict[str, Any]:
     }
 
 
+async def _avaliar_alerta_cpu(db, cpu: float) -> None:
+    if not settings.waha_grupo_monitoramento_id:
+        return
+    try:
+        registro, senha = await _obter_estado_persistente(db)
+    except RuntimeError:
+        return
+
+    faixa_anterior = registro.faixa_cpu
+    if cpu >= 50:
+        faixa_nova = "urgencia"
+    elif cpu >= 30:
+        faixa_nova = "alerta"
+    elif cpu < 25:
+        faixa_nova = "normal"
+    else:
+        faixa_nova = faixa_anterior
+
+    if faixa_nova == faixa_anterior:
+        return
+
+    agora = datetime.now(FUSO_BAHIA).strftime("%d/%m/%Y %H:%M:%S")
+    if faixa_nova == "urgencia":
+        mensagem = (
+            "🚨 *URGÊNCIA — CPU ACIMA DE 50%*\n"
+            f"Servidor: {settings.monitor_ssh_host}\nCPU: *{cpu:.1f}%*\nHorário: {agora}"
+        )
+    elif faixa_nova == "alerta":
+        mensagem = (
+            "⚠️ *ALERTA — CPU ACIMA DE 30%*\n"
+            f"Servidor: {settings.monitor_ssh_host}\nCPU: *{cpu:.1f}%*\nHorário: {agora}"
+        )
+    else:
+        mensagem = (
+            "✅ *CPU NORMALIZADA*\n"
+            f"Servidor: {settings.monitor_ssh_host}\nCPU: *{cpu:.1f}%*\nHorário: {agora}"
+        )
+    mensagem += f"\n\n🔐 Senha vigente do botão de emergência: *{senha}*"
+    _enfileirar_mensagem(db, mensagem)
+    registro.faixa_cpu = faixa_nova
+
+
 async def coletar_e_salvar() -> None:
     try:
         dados = await asyncio.to_thread(_coletar_bloqueante)
@@ -111,6 +208,7 @@ async def coletar_e_salvar() -> None:
                 memoria_percentual=dados["memoria"],
                 detalhes_json=json.dumps({"load": dados["load"], "host": dados["host"]}),
             ))
+            await _avaliar_alerta_cpu(db, dados["cpu"])
             await db.execute(delete(MonitoramentoAmostra).where(
                 MonitoramentoAmostra.coletado_em < datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
             ))
@@ -135,20 +233,38 @@ async def obter_historico(db, minutos: int = 60) -> list[dict[str, Any]]:
             for a in resultado.scalars().all()]
 
 
-async def executar_panico(senha: str) -> tuple[bool, str]:
+async def executar_panico(senha: str, db, usuario: dict) -> tuple[bool, str]:
     global _ultimo_panic
     if not panico_configurado():
         return False, "Botão de pânico não configurado corretamente no servidor"
-    if not hmac.compare_digest(senha, settings.monitor_panic_password):
-        return False, "Senha de autorização inválida"
-    if not settings.monitor_panic_script.startswith("/") or any(c in settings.monitor_panic_script for c in "\n\r"):
-        return False, "Script de pânico inválido na configuração"
     async with _panic_lock:
-        agora = time.monotonic()
-        if agora - _ultimo_panic < 120:
+        agora_monotonic = time.monotonic()
+        if agora_monotonic - _ultimo_panic < 120:
             return False, "Aguarde 2 minutos antes de um novo acionamento"
-        _ultimo_panic = agora
-        return await asyncio.to_thread(_executar_panico_bloqueante)
+        try:
+            registro, senha_atual = await _obter_estado_persistente(db)
+        except RuntimeError:
+            return False, "Credencial de emergência indisponível"
+        if not hmac.compare_digest(senha, senha_atual):
+            return False, "Senha de autorização inválida"
+
+        _ultimo_panic = agora_monotonic
+        sucesso, detalhe = await asyncio.to_thread(_executar_panico_bloqueante)
+        # A senha é de uso único: após qualquer tentativa autenticada, ela é renovada.
+        nova_senha = _nova_senha()
+        registro.senha_atual_cifrada = _fernet().encrypt(nova_senha.encode()).decode()
+        horario = datetime.now(FUSO_BAHIA).strftime("%d/%m/%Y %H:%M:%S")
+        resultado = "Script executado com sucesso" if sucesso else f"Falha na execução: {detalhe}"
+        mensagem = (
+            "🚨 *BOTÃO DE PÂNICO ACIONADO*\n"
+            f"Servidor: {settings.monitor_ssh_host}\n"
+            f"Acionado por: *{usuario.get('nome') or usuario.get('login')}*\n"
+            f"Horário: {horario}\nResultado: {resultado}\n\n"
+            f"🔐 *NOVA SENHA DE EMERGÊNCIA:*\n*{nova_senha}*\n"
+            "A senha anterior foi invalidada. Esta senha será usada no próximo acionamento."
+        )
+        _enfileirar_mensagem(db, mensagem)
+        return sucesso, detalhe
 
 
 def _executar_panico_bloqueante() -> tuple[bool, str]:
@@ -171,8 +287,10 @@ def _executar_panico_bloqueante() -> tuple[bool, str]:
 def panico_configurado() -> bool:
     script = settings.monitor_panic_script
     return bool(
-        settings.monitor_panic_password
-        and len(settings.monitor_panic_password) >= 16
+        len(settings.monitor_panic_password) >= 16
+        and settings.monitor_panic_encryption_key
+        and settings.waha_api_key
+        and settings.waha_grupo_monitoramento_id
         and script.startswith("/")
-        and not any(c in script for c in "\n\r")
+        and not any(c in script for c in "\\n\\r")
     )
