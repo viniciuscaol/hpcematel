@@ -14,10 +14,6 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 30
     environment: str = "development"
-
-    # Pasta onde os anexos dos chamados ficam salvos no servidor.
-    # Trocar esse caminho (e o volume correspondente no docker-compose)
-    # é suficiente para mudar onde os arquivos são armazenados.
     anexos_dir: str = "/app/anexos"
 
     # WAHA (notificações WhatsApp)
@@ -26,13 +22,12 @@ class Settings(BaseSettings):
     waha_sessao: str = "default"
     waha_grupo_id: str = ""
     waha_grupo_diretoria_id: str = ""
-
-    # Rastreio de envio/reverso via Seu Rastreio (gratuito) — vazio = recurso desligado
-    # seurastreio_api_key: str = ""
+    # Grupo exclusivo de ADMIN/TÉCNICOS para alertas de infraestrutura.
+    waha_grupo_monitoramento_id: str = ""
 
     pacotevicio_api_key: str = ""
 
-    # Monitoramento remoto (SSH); vazio desativa a coleta sem impedir o Help Desk.
+    # Monitoramento remoto (SSH).
     monitor_ssh_host: str = ""
     monitor_ssh_port: int = 30022
     monitor_ssh_user: str = ""
@@ -40,7 +35,11 @@ class Settings(BaseSettings):
     monitor_ssh_known_hosts: str = ""
     monitor_ssh_key_passphrase: str = ""
     monitor_poll_interval: int = 5
+
+    # MONITOR_PANIC_PASSWORD é apenas a credencial inicial (bootstrap).
+    # Depois da primeira inicialização, a senha vigente fica cifrada no banco.
     monitor_panic_password: str = ""
+    monitor_panic_encryption_key: str = ""
     monitor_panic_script: str = ""
     monitor_panic_sudo: bool = True
 
