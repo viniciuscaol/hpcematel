@@ -167,3 +167,59 @@ def test_cpu_java_reinicia_linha_de_base_quando_pid_muda(monkeypatch):
 
     assert resultado == 0.0
     assert servico._ultimo_java_cpu == ("30000", 5000)
+
+
+
+def test_coleta_identifica_tomcat_com_argumentos_longos(monkeypatch):
+    from app.services import monitoramento_service as servico
+
+    class Saida:
+        def __init__(self, conteudo):
+            self.conteudo = conteudo
+
+        def read(self):
+            return self.conteudo.encode()
+
+    class ClienteSSH:
+        comando = ""
+
+        def exec_command(self, comando, timeout):
+            self.comando = comando
+            saida = """@@HOST
+servidor-teste
+@@STAT
+cpu 100 0 50 1000 0 0 0 0 0 0
+@@MEM
+MemTotal: 8000000 kB
+MemAvailable: 6000000 kB
+SwapTotal: 0 kB
+SwapFree: 0 kB
+@@LOAD
+0.10 0.20 0.30 1/100 123
+@@UPTIME
+1000.00 2000.00
+@@PS
+21432 root 2.7 19.5 java
+@@JAVA
+21432 485875 1565288 167
+"""
+            return None, Saida(saida), Saida("")
+
+        def close(self):
+            pass
+
+    cliente = ClienteSSH()
+    monkeypatch.setattr(servico, "_ssh_client", lambda: cliente)
+    monkeypatch.setattr(servico, "_ultimo_cpu", None)
+    monkeypatch.setattr(servico, "_ultimo_java_cpu", None)
+
+    resultado = servico._coletar_bloqueante()
+
+    assert "ps -ww -eo pid=,comm=,args=" in cliente.comando
+    assert resultado["java"] == {
+        "pid": 21432,
+        "cpu": 0.0,
+        "memoria_mb": 1529,
+        "memoria_percentual": 19.6,
+        "threads": 167,
+    }
