@@ -15,9 +15,11 @@
     const c=$("monitor-chart"), ctx=c.getContext("2d"), w=c.width=c.clientWidth*devicePixelRatio, h=c.height=180*devicePixelRatio;
     ctx.clearRect(0,0,w,h); if(!historico.length)return;
     const max=100, pad=22*devicePixelRatio;
-    [["cpu","#2C3E8C"],["memoria","#16a34a"]].forEach(([k,cor])=>{
+    [["cpu","#2C3E8C"],["memoria","#16a34a"],["java_cpu","#dc2626"],["java_memoria","#d97706"]].forEach(([k,cor])=>{
+      const pontos=historico.map((p,i)=>({valor:p[k],indice:i})).filter(p=>p.valor!==null&&p.valor!==undefined&&Number.isFinite(Number(p.valor)));
+      if(!pontos.length)return;
       ctx.beginPath();ctx.strokeStyle=cor;ctx.lineWidth=2*devicePixelRatio;
-      historico.forEach((p,i)=>{const x=pad+i*(w-2*pad)/Math.max(1,historico.length-1),y=h-pad-(Number(p[k])/max)*(h-2*pad);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
+      pontos.forEach((p,i)=>{const x=pad+p.indice*(w-2*pad)/Math.max(1,historico.length-1),y=h-pad-(Number(p.valor)/max)*(h-2*pad);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});
       ctx.stroke();
     });
   }
@@ -35,6 +37,11 @@
       $("cpu-host").textContent=d.host;$("ram-detalhe").textContent=`${d.memoria_usada_mb} MB de ${d.memoria_total_mb} MB`;
       $("host").textContent=d.host;$("load").textContent=(d.load||[]).join(" / ");$("uptime").textContent=duracao(d.uptime_segundos||0);
       $("swap").textContent=`${d.swap_total_mb-(d.swap_livre_mb||0)} / ${d.swap_total_mb} MB`;
+      const java=d.java;
+      $("java-pid").textContent=java?java.pid:"Não encontrado";
+      $("java-cpu").textContent=java?`${Number(java.cpu).toFixed(1)}%`:"--";
+      $("java-ram").textContent=java?`${java.memoria_mb} MB (${Number(java.memoria_percentual).toFixed(1)}%)`:"--";
+      $("java-threads").textContent=java?java.threads:"--";
       $("processos").innerHTML=(d.processos||[]).slice(0,8).map(p=>`<tr><td>${String(p.nome).replace(/[&<>"]/g,"")}</td><td>${p.pid}</td><td>${p.cpu.toFixed(1)}%</td><td>${p.memoria.toFixed(1)}%</td></tr>`).join("")||'<tr><td colspan="4">Sem dados</td></tr>';
       desenharGrafico();
     } catch(e) {$("monitor-status").textContent="Falha na consulta";$("monitor-status").className="monitor-status offline"}

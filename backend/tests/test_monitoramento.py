@@ -142,3 +142,28 @@ def test_notificacao_monitoramento_e_enfileirada_para_24h(monkeypatch):
     assert notificacao.chat_id == "grupo-operacional@g.us"
     assert notificacao.mensagem == "alerta de teste"
     assert notificacao.fora_horario is True
+
+
+
+def test_cpu_java_e_calculada_por_delta_de_ticks(monkeypatch):
+    from app.services import monitoramento_service as servico
+
+    monkeypatch.setattr(servico, "_ultimo_java_cpu", None)
+    # A primeira amostra apenas estabelece a linha de base.
+    primeira = servico._calcular_cpu_java("21432", 1000, 0)
+    segunda = servico._calcular_cpu_java("21432", 1040, 1000)
+    terceira = servico._calcular_cpu_java("21432", 1060, 1000)
+
+    assert primeira == 0.0
+    assert segunda == 4.0
+    assert terceira == 2.0
+
+
+def test_cpu_java_reinicia_linha_de_base_quando_pid_muda(monkeypatch):
+    from app.services import monitoramento_service as servico
+
+    monkeypatch.setattr(servico, "_ultimo_java_cpu", ("21432", 1000))
+    resultado = servico._calcular_cpu_java("30000", 5000, 1000)
+
+    assert resultado == 0.0
+    assert servico._ultimo_java_cpu == ("30000", 5000)

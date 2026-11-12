@@ -21,8 +21,20 @@ from app.utils.datas import FUSO_BAHIA
 
 _estado: dict[str, Any] = {"online": False, "erro": "Aguardando primeira coleta"}
 _ultimo_cpu = None
+_ultimo_java_cpu: tuple[str, int] | None = None
 _ultimo_panic = 0.0
 _panic_lock = asyncio.Lock()
+
+
+def _calcular_cpu_java(pid: str, ticks: int, delta_total: int) -> float:
+    """Calcula a fatia de CPU do processo sobre a capacidade total do host."""
+    global _ultimo_java_cpu
+    percentual = 0.0
+    if _ultimo_java_cpu and _ultimo_java_cpu[0] == pid and delta_total > 0:
+        delta_processo = max(0, ticks - _ultimo_java_cpu[1])
+        percentual = round(min(100.0, delta_processo * 100 / delta_total), 1)
+    _ultimo_java_cpu = (pid, ticks)
+    return percentual
 
 
 def _fernet() -> Fernet:
@@ -98,7 +110,7 @@ def _ssh_client():
 def _coletar_bloqueante() -> dict[str, Any]:
     client = _ssh_client()
     try:
-        comando = r"""bash -lc 'export LC_ALL=C; echo @@HOST; hostname; echo @@STAT; head -1 /proc/stat; echo @@MEM; awk "/MemTotal:|MemAvailable:|SwapTotal:|SwapFree:/ {print}" /proc/meminfo; echo @@LOAD; cat /proc/loadavg; echo @@UPTIME; cat /proc/uptime; echo @@PS; ps -eo pid=,user=,pcpu=,pmem=,comm= --sort=-pcpu | head -n 9'"""
+        comando = r"""bash -lc 'export LC_ALL=C; echo @@HOST; hostname; echo @@STAT; head -1 /proc/stat; echo @@MEM; awk "/MemTotal:|MemAvailable:|SwapTotal:|SwapFree:/ {print}" /proc/meminfo; echo @@LOAD; cat /proc/loadavg; echo @@UPTIME; cat /proc/uptime; echo @@PS; ps -eo pid=,user=,pcpu=,pmem=,comm= --sort=-pcpu | head -n 9; echo @@JAVA; java_pid=$(ps -eo pid=,comm=,args= | awk "\$2 == \"java\" && /org.apache.catalina.startup.Bootstrap/ {print \$1; exit}"); if [ -n "$java_pid" ] && [ -r "/proc/$java_pid/stat" ]; then java_ticks=$(awk "{print \$14 + \$15}" "/proc/$java_pid/stat"); java_rss=$(awk "\$1 == \"VmRSS:\" {print \$2}" "/proc/$java_pid/status"); java_threads=$(awk "\$1 == \"Threads:\" {print \$2}" "/proc/$java_pid/status"); printf "%s %s %s %s\\n" "$java_pid" "$java_ticks" "$java_rss" "$java_threads"; fi'"""
         _, stdout, stderr = client.exec_command(comando, timeout=10)
         saida = stdout.read().decode("utf-8", "replace")
         erro = stderr.read().decode("utf-8", "replace")
@@ -122,10 +134,11 @@ def _coletar_bloqueante() -> dict[str, Any]:
     total = sum(valores)
     global _ultimo_cpu
     cpu = 0.0
+    delta_total = 0
     if _ultimo_cpu:
-        dt, di = total - _ultimo_cpu[0], idle - _ultimo_cpu[1]
-        if dt > 0:
-            cpu = round(max(0.0, min(100.0, (dt - di) * 100 / dt)), 1)
+        delta_total, di = total - _ultimo_cpu[0], idle - _ultimo_cpu[1]
+        if delta_total > 0:
+            cpu = round(max(0.0, min(100.0, (delta_total - di) * 100 / delta_total)), 1)
     _ultimo_cpu = (total, idle)
 
     mem = {}
@@ -141,11 +154,31 @@ def _coletar_bloqueante() -> dict[str, Any]:
         p = linha.split(None, 4)
         if len(p) == 5:
             processos.append({"pid": p[0], "usuario": p[1], "cpu": float(p[2]), "memoria": float(p[3]), "nome": p[4]})
+    global _ultimo_java_cpu
+    java = None
+    linhas_java = secoes.get("JAVA", [])
+    if linhas_java:
+        partes_java = linhas_java[0].split()
+        if len(partes_java) == 4:
+            pid_java, ticks_java, rss_kb, threads_java = partes_java
+            ticks_java = int(ticks_java)
+            cpu_java = _calcular_cpu_java(pid_java, ticks_java, delta_total)
+            rss_kb = int(rss_kb or 0)
+            java = {
+                "pid": int(pid_java),
+                "cpu": cpu_java,
+                "memoria_mb": round(rss_kb / 1024),
+                "memoria_percentual": round(rss_kb * 100 / total_mem, 1) if total_mem else 0.0,
+                "threads": int(threads_java or 0),
+            }
+    else:
+        _ultimo_java_cpu = None
+
     load = secoes.get("LOAD", [""])[0].split()
     uptime = float(secoes.get("UPTIME", ["0"])[0].split()[0])
     return {
         "online": True, "erro": None, "host": secoes.get("HOST", ["Servidor"])[0],
-        "cpu": cpu, "memoria": memoria, "memoria_total_mb": round(total_mem / 1024),
+        "cpu": cpu, "memoria": memoria, "java": java, "memoria_total_mb": round(total_mem / 1024),
         "memoria_usada_mb": round((total_mem - disponivel) / 1024),
         "swap_total_mb": round(mem.get("SwapTotal", 0) / 1024),
         "swap_livre_mb": round(mem.get("SwapFree", 0) / 1024),
@@ -205,7 +238,9 @@ async def coletar_e_salvar() -> None:
             db.add(MonitoramentoAmostra(
                 cpu_percentual=dados["cpu"],
                 memoria_percentual=dados["memoria"],
-                detalhes_json=json.dumps({"load": dados["load"], "host": dados["host"]}),
+                detalhes_json=json.dumps({
+                    "load": dados["load"], "host": dados["host"], "java": dados.get("java")
+                }),
             ))
             await _avaliar_alerta_cpu(db, dados["cpu"])
             await db.execute(delete(MonitoramentoAmostra).where(
@@ -228,8 +263,21 @@ async def obter_historico(db, minutos: int = 60) -> list[dict[str, Any]]:
         select(MonitoramentoAmostra).where(MonitoramentoAmostra.coletado_em >= desde)
         .order_by(MonitoramentoAmostra.coletado_em).limit(2000)
     )
-    return [{"hora": a.coletado_em.isoformat(), "cpu": a.cpu_percentual, "memoria": a.memoria_percentual}
-            for a in resultado.scalars().all()]
+    amostras = []
+    for amostra in resultado.scalars().all():
+        try:
+            detalhes = json.loads(amostra.detalhes_json or "{}")
+        except (TypeError, ValueError):
+            detalhes = {}
+        java = detalhes.get("java") or {}
+        amostras.append({
+            "hora": amostra.coletado_em.isoformat(),
+            "cpu": amostra.cpu_percentual,
+            "memoria": amostra.memoria_percentual,
+            "java_cpu": java.get("cpu"),
+            "java_memoria": java.get("memoria_percentual"),
+        })
+    return amostras
 
 
 async def executar_panico(senha: str, db, usuario: dict) -> tuple[bool, str]:
