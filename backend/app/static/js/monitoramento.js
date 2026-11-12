@@ -39,8 +39,18 @@
       desenharGrafico();
     } catch(e) {$("monitor-status").textContent="Falha na consulta";$("monitor-status").className="monitor-status offline"}
   }
-  $("abrir-panico").addEventListener("click",()=>{ $("form-panico").reset();$("panico-mensagem").textContent="";dialog.showModal() });
+  const formPanico = $("form-panico");
+  const camposPanico = $("panico-campos");
+  const sucessoPanico = $("panico-sucesso");
+  function prepararDialogoPanico() {
+    formPanico.reset();
+    $("panico-mensagem").textContent = "";
+    camposPanico.hidden = false;
+    sucessoPanico.hidden = true;
+  }
+  $("abrir-panico").addEventListener("click",()=>{ prepararDialogoPanico(); dialog.showModal(); });
   $("cancelar-panico").addEventListener("click",()=>dialog.close());
+  $("panico-ok").addEventListener("click",()=>{ prepararDialogoPanico(); dialog.close(); });
   $("form-panico").addEventListener("submit",async e=>{
     e.preventDefault();
     const form=e.currentTarget;
@@ -51,8 +61,13 @@
     try{
       const resposta=await fetch("/api/monitoramento/panico",{method:"POST",body:dados});
       const dadosResposta=await resposta.json();
-      $("panico-mensagem").textContent=dadosResposta.mensagem||dadosResposta.detail||"Solicitação concluída.";
-      if(resposta.ok)form.reset();
+      if(!resposta.ok) {
+        $("panico-mensagem").textContent=dadosResposta.mensagem||dadosResposta.detail||"Não foi possível executar a ação.";
+        return;
+      }
+      $("panico-sucesso-mensagem").textContent=dadosResposta.mensagem||"Comando de emergência executado.";
+      camposPanico.hidden = true;
+      sucessoPanico.hidden = false;
     }catch(_){
       $("panico-mensagem").textContent="Não foi possível concluir a solicitação. Verifique o status antes de tentar novamente.";
     }finally{
