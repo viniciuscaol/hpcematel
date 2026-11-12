@@ -23,11 +23,18 @@
     </section>
     <dialog id="dialog-panico" class="monitor-dialog">
       <form id="form-panico">
-        <h2>Confirmar ação de emergência</h2><p>Esta ação pode reiniciar serviços ou o servidor. Digite <strong>REINICIAR</strong> e informe sua senha de autorização.</p>
-        <label for="confirmacao-panico">Confirmação</label><input id="confirmacao-panico" name="confirmacao" autocomplete="off" required>
-        <label for="senha-panico">Senha de autorização</label><input id="senha-panico" name="senha" type="password" autocomplete="current-password" required>
-        <p id="panico-mensagem" role="status"></p>
-        <div class="monitor-dialog-actions"><button type="button" id="cancelar-panico" class="button-secondary">Cancelar</button><button type="submit" class="monitor-panic-button">Confirmar acionamento</button></div>
+        <div id="panico-campos">
+          <h2>Confirmar ação de emergência</h2><p>Esta ação pode reiniciar serviços ou o servidor. Digite <strong>REINICIAR</strong> e informe sua senha de autorização.</p>
+          <label for="confirmacao-panico">Confirmação</label><input id="confirmacao-panico" name="confirmacao" autocomplete="off" required>
+          <label for="senha-panico">Senha de autorização</label><input id="senha-panico" name="senha" type="password" autocomplete="current-password" required>
+          <p id="panico-mensagem" role="status"></p>
+          <div class="monitor-dialog-actions"><button type="button" id="cancelar-panico" class="button-secondary">Cancelar</button><button type="submit" class="monitor-panic-button">Confirmar acionamento</button></div>
+        </div>
+        <div id="panico-sucesso" hidden>
+          <h2>Emergência executada</h2>
+          <p id="panico-sucesso-mensagem" role="status" aria-live="polite">Comando de emergência executado.</p>
+          <div class="monitor-dialog-actions"><button type="button" id="panico-ok" class="monitor-panic-button">OK</button></div>
+        </div>
       </form>
     </dialog>
   </main>
