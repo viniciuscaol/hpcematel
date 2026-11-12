@@ -20,8 +20,14 @@
 }
 .monitor-dialog label {
   display: block;
+  grid-column: 1 / -1;
+  width: 100%;
   margin: 2px 0 0;
   font-weight: 600;
+}
+.monitor-dialog #panico-campos > label,
+.monitor-dialog #panico-campos > input {
+  grid-column: 1 / -1;
 }
 .monitor-dialog input {
   display: block;
