@@ -16,6 +16,7 @@ from app.auth.dependencies import get_current_user_optional
 from app.auth.security import create_access_token
 from app.config import settings
 from app.database.helpdesk_db import get_helpdesk_db
+from app.services.auditoria_service import registrar_evento_auditoria
 from app.services.auth_service import (
     autenticar_usuario,
     CredenciaisInvalidas,
@@ -32,6 +33,10 @@ from app.templates_config import templates
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
+
+
+def _ip_origem(request: Request) -> str | None:
+    return request.client.host if request.client else None
 
 
 @router.get("/")
@@ -63,11 +68,23 @@ async def processar_login(
     try:
         usuario = await autenticar_usuario(login, senha)
     except CredenciaisInvalidas:
+        await registrar_evento_auditoria(
+            db, tipo_evento="autenticacao", categoria="autenticacao",
+            acao="login", resultado="falha", usuario_login=login,
+            metodo_http="POST", caminho="/login", status_http=401,
+            ip_origem=_ip_origem(request), detalhes="Credenciais inválidas",
+        )
         return templates.TemplateResponse(
             "partials/login_error.html",
             {"request": request, "mensagem": "Usuário ou senha inválidos."},
         )
     except SemPermissaoHelpDesk:
+        await registrar_evento_auditoria(
+            db, tipo_evento="autenticacao", categoria="autenticacao",
+            acao="login", resultado="negado", usuario_login=login,
+            metodo_http="POST", caminho="/login", status_http=403,
+            ip_origem=_ip_origem(request), detalhes="Usuário sem permissão para acessar o Help Desk",
+        )
         return templates.TemplateResponse(
             "partials/login_error.html",
             {"request": request, "mensagem": "Este usuário não tem permissão para acessar o Help Desk."},
@@ -77,14 +94,20 @@ async def processar_login(
         usuario_codigo=usuario["codigo"], login=usuario["login"], nome=usuario["nome"]
     )
 
-    # Só aceita redirecionar para caminhos internos (começando com "/"),
-    # nunca para uma URL externa — evita golpe de "redirecionamento aberto".
     destino = next if next.startswith("/") and not next.startswith("//") else "/dashboard"
 
     if destino == "/dashboard":
         papel = await buscar_papel_usuario(db, usuario["codigo"])
         if papel == PAPEL_TECNICO:
             destino = "/tecnico"
+
+    await registrar_evento_auditoria(
+        db, tipo_evento="autenticacao", categoria="autenticacao",
+        acao="login", resultado="sucesso",
+        usuario_codigo=usuario["codigo"], usuario_login=usuario["login"],
+        usuario_nome=usuario["nome"], metodo_http="POST", caminho="/login",
+        status_http=200, ip_origem=_ip_origem(request),
+    )
 
     resposta = Response(status_code=200)
     resposta.set_cookie(
@@ -130,6 +153,7 @@ async def tela_dashboard(
     }
     return templates.TemplateResponse("dashboard.html", contexto)
 
+
 @router.get("/tecnico")
 async def tela_tecnico(
     request: Request,
@@ -143,7 +167,20 @@ async def tela_tecnico(
 
 
 @router.post("/logout")
-async def processar_logout():
+async def processar_logout(
+    request: Request,
+    usuario: dict | None = Depends(get_current_user_optional),
+    db: AsyncSession = Depends(get_helpdesk_db),
+):
+    await registrar_evento_auditoria(
+        db, tipo_evento="autenticacao", categoria="autenticacao",
+        acao="logout", resultado="sucesso",
+        usuario_codigo=usuario.get("codigo") if usuario else None,
+        usuario_login=usuario.get("login") if usuario else None,
+        usuario_nome=usuario.get("nome") if usuario else None,
+        metodo_http="POST", caminho="/logout", status_http=200,
+        ip_origem=_ip_origem(request),
+    )
     resposta = Response(status_code=200)
     resposta.delete_cookie("session_token")
     resposta.headers["HX-Redirect"] = "/login"
