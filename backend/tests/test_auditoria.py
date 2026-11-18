@@ -1,4 +1,4 @@
-"""Testes da trilha central de auditoria e do acesso exclusivo ADMIN."""
+""""Testes da trilha central de auditoria e do acesso exclusivo ADMIN."""
 import pytest
 from sqlalchemy import delete, select
 
@@ -80,5 +80,23 @@ async def test_interacao_autenticada_gera_registro_de_consulta(client):
             assert registro.acao == "raiz"
             assert registro.resultado == "sucesso"
             assert registro.status_http == 307
+    finally:
+        await _limpar_usuario(codigo)
+
+
+async def test_pesquisa_logs_aceita_datas_vazias(client):
+    """O formulário HTML envia datas vazias quando nenhum período é informado."""
+    codigo = 987643
+    try:
+        await _definir_papel(codigo, "ADMIN")
+        _autenticar(client, codigo, "ADMIN")
+
+        resposta = await client.get(
+            "/admin/logs?q=&usuario=&categoria=&tipo_evento=&resultado="
+            "&data_inicio=&data_fim="
+        )
+
+        assert resposta.status_code == 200
+        assert "Logs / Auditoria" in resposta.text
     finally:
         await _limpar_usuario(codigo)
