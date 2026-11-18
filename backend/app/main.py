@@ -80,6 +80,8 @@ async def _auditar_requisicao(request: Request, status_http: int) -> None:
         or caminho_real in {
             "/health", "/favicon.ico", "/favicon.svg", "/openapi.json",
             "/docs", "/redoc", "/login", "/logout", "/auth/login", "/auth/logout",
+            # Consultas automáticas a cada cinco segundos não representam ação humana.
+            "/api/monitoramento/status", "/api/monitoramento/historico",
         }
     ):
         return

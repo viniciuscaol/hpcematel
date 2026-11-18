@@ -65,6 +65,8 @@ async def pagina_logs(
                 AuditoriaLog.acao.ilike(padrao),
                 AuditoriaLog.caminho.ilike(padrao),
                 AuditoriaLog.entidade_id.ilike(padrao),
+                AuditoriaLog.ip_origem.ilike(padrao),
+                AuditoriaLog.detalhes.ilike(padrao),
             )
         )
 
