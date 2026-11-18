@@ -79,6 +79,6 @@ async def test_interacao_autenticada_gera_registro_de_consulta(client):
             assert registro.categoria == "sistema"
             assert registro.acao == "raiz"
             assert registro.resultado == "sucesso"
-            assert registro.status_http == 303
+            assert registro.status_http == 307
     finally:
         await _limpar_usuario(codigo)
