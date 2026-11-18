@@ -65,7 +65,7 @@ async def test_interacao_autenticada_gera_registro_de_consulta(client):
     try:
         _autenticar(client, codigo, "ADMIN")
         resposta = await client.get("/")
-        assert resposta.status_code == 303
+        assert resposta.status_code == 307
 
         async with HelpdeskSessionLocal() as db:
             registro = await db.scalar(
