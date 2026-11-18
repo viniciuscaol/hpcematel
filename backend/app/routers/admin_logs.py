@@ -1,10 +1,12 @@
 """Consulta administrativa da trilha central de auditoria."""
 from datetime import date, datetime, time, timedelta, timezone
 from math import ceil
+from typing import Annotated
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BeforeValidator
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +19,16 @@ from app.templates_config import templates
 router = APIRouter(prefix="/admin", tags=["admin"])
 FUSO_LOCAL = ZoneInfo("America/Bahia")
 TAMANHO_PAGINA = 50
+
+
+def _data_vazia_como_none(valor):
+    """Aceita campos date opcionais enviados vazios pelos formulários HTML."""
+    if isinstance(valor, str) and not valor.strip():
+        return None
+    return valor
+
+
+DataFiltro = Annotated[date | None, BeforeValidator(_data_vazia_como_none)]
 
 CATEGORIAS = [
     ("autenticacao", "Autenticação"),
@@ -50,8 +62,8 @@ async def pagina_logs(
     categoria: str | None = None,
     tipo_evento: str | None = None,
     resultado: str | None = None,
-    data_inicio: date | None = None,
-    data_fim: date | None = None,
+    data_inicio: DataFiltro = None,
+    data_fim: DataFiltro = None,
     pagina: int = Query(1, ge=1),
 ):
     filtros = []
