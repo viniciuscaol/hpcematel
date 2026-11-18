@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Logs / Auditoria - {{ app_name }}{% endblock %}
+{% block content %}
+<div class="app-shell">
+  {% include "partials/topbar.html" %}
+  <main class="content">
+    <a href="/admin" class="voltar-link">&larr; Administração</a>
+    <div class="page-header">
+      <div>
+        <h1>Logs / Auditoria</h1>
+        <p class="sem-resultado">Histórico de consultas, alterações, autenticações e falhas do sistema.</p>
+      </div>
+      <strong>{{ total }} registro(s)</strong>
+    </div>
+
+    <form method="get" action="/admin/logs" class="dashboard-painel auditoria-filtros">
+      <div class="auditoria-filtros-grid">
+        <label>Pesquisa geral
+          <input type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Ação, chamado, caminho...">
+        </label>
+        <label>Usuário
+          <input type="search" name="usuario" value="{{ usuario_filtro }}" maxlength="100" placeholder="Nome ou login">
+        </label>
+        <label>Categoria
+          <select name="categoria">
+            <option value="">Todas</option>
+            {% for valor, rotulo in categorias %}
+            <option value="{{ valor }}" {% if categoria_selecionada == valor %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Tipo de evento
+          <select name="tipo_evento">
+            <option value="">Todos</option>
+            {% for valor, rotulo in tipos %}
+            <option value="{{ valor }}" {% if tipo_selecionado == valor %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Resultado
+          <select name="resultado">
+            <option value="">Todos</option>
+            {% for valor, rotulo in resultados %}
+            <option value="{{ valor }}" {% if resultado_selecionado == valor %}selected{% endif %}>{{ rotulo }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>Data inicial
+          <input type="date" name="data_inicio" value="{{ data_inicio }}">
+        </label>
+        <label>Data final
+          <input type="date" name="data_fim" value="{{ data_fim }}">
+        </label>
+      </div>
+      <div class="auditoria-acoes-filtro">
+        <button type="submit" class="button-link">Pesquisar</button>
+        <a href="/admin/logs" class="voltar-link">Limpar filtros</a>
+      </div>
+    </form>
+
+    {% if logs %}
+    <div class="tabela-scroll">
+      <table class="chamados-tabela chamados-tabela-responsiva">
+        <thead>
+          <tr>
+            <th>Data / hora</th><th>Usuário</th><th>Categoria</th><th>Tipo</th>
+            <th>Ação</th><th>Recurso</th><th>Resultado</th><th>HTTP / IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in logs %}
+          <tr>
+            <td data-label="Data / hora">{{ log.data_hora }}</td>
+            <td data-label="Usuário">{{ log.usuario }}<small class="auditoria-login">{{ log.login }}</small></td>
+            <td data-label="Categoria">{{ log.categoria }}</td>
+            <td data-label="Tipo">{{ log.tipo }}</td>
+            <td data-label="Ação">{{ log.acao }}</td>
+            <td data-label="Recurso">{{ log.recurso }}</td>
+            <td data-label="Resultado">
+              {% if log.resultado == "sucesso" %}
+              <span class="badge" style="background:#15803d">Sucesso</span>
+              {% elif log.resultado == "negado" %}
+              <span class="badge" style="background:#b45309">Negado</span>
+              {% else %}
+              <span class="badge" style="background:#b91c1c">Falha</span>
+              {% endif %}
+            </td>
+            <td data-label="HTTP / IP">{{ log.status_http or "—" }}<small class="auditoria-login">{{ log.ip }}</small></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="dashboard-painel">
+      <p class="sem-resultado">Nenhum registro encontrado para os filtros informados.</p>
+    </div>
+    {% endif %}
+
+    <nav class="paginacao" aria-label="Paginação dos logs">
+      {% if anterior_url %}<a class="button-link" href="{{ anterior_url }}">Anterior</a>{% endif %}
+      <span>Página {{ pagina }} de {{ total_paginas }}</span>
+      {% if proxima_url %}<a class="button-link" href="{{ proxima_url }}">Próxima</a>{% endif %}
+    </nav>
+    <p class="sem-resultado">Os registros são somente para consulta e não podem ser alterados ou apagados pela interface.</p>
+  </main>
+</div>
+<style>
+.auditoria-filtros { margin: 1rem 0 1.5rem; }
+.auditoria-filtros-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: .9rem; }
+.auditoria-filtros-grid label { display: flex; flex-direction: column; gap: .35rem; color: var(--color-muted); font-size: .82rem; }
+.auditoria-filtros-grid input, .auditoria-filtros-grid select { min-width: 0; padding: .55rem .65rem; border: 1px solid #d1d5db; border-radius: 6px; font: inherit; color: var(--color-text); }
+.auditoria-acoes-filtro { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+.auditoria-acoes-filtro .voltar-link { margin: 0; }
+.auditoria-login { display: block; margin-top: .2rem; color: var(--color-muted); font-size: .75rem; }
+.auditoria-filtros-grid input:focus, .auditoria-filtros-grid select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-light); }
+</style>
+{% endblock %}

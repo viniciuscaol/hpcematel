@@ -10,7 +10,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.config import settings
 from app.database.helpdesk_db import Base
-from app.models import chamado, monitoramento  # noqa: F401 - registra os modelos
+from app.models import auditoria, chamado, monitoramento  # noqa: F401 - registra os modelos
 
 config = context.config
 
